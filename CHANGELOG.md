@@ -98,6 +98,14 @@ versioning is [semver](https://semver.org/).
   will still be readable before committing paper to it.
 
 ### Fixed
+- Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
+  are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.
+- Rendered sheets are no longer cached without bound; only the visible sheet and
+  its neighbours are kept. A long document previously accumulated every sheet
+  swiped past, at several megabytes each.
+- Preview sheets render at a resolution meant for zooming rather than for a
+  thumbnail, so pinching in shows detail rather than enlarged mush.
+- Double tap animates rather than jumping.
 - Reading order is no longer offered on a single-row or single-column grid, where
   "across" and "down" describe the same traversal and the control could not change
   anything. A setting that visibly does nothing reads as a broken app.

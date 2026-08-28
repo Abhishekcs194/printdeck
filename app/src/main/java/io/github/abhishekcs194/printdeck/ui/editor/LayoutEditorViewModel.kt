@@ -169,16 +169,36 @@ class LayoutEditorViewModel @Inject constructor(
         engine.impose(document.file, singleSheet, target)
         val bitmap = previewRenderer.renderPage(target, pageIndex = 0, targetWidthPx = PREVIEW_WIDTH_PX)
 
-        _state.update { it.copy(previews = it.previews + (index to bitmap)) }
+        _state.update { current ->
+            current.copy(previews = (current.previews + (index to bitmap)).evictFarFrom(current.previewIndex))
+        }
     }
+
+    /**
+     * Keeps only the sheet in view and its immediate neighbours.
+     *
+     * Each rendered sheet is several megabytes, so without this a long document
+     * accumulates every sheet the user has swiped past until the process is
+     * killed. Anything evicted is cheap to draw again.
+     */
+    private fun Map<Int, Bitmap>.evictFarFrom(index: Int): Map<Int, Bitmap> =
+        filterKeys { kotlin.math.abs(it - index) <= CACHE_RADIUS }
 
     private companion object {
         const val DEBOUNCE_MS = 220L
 
         /**
-         * Wide enough to stay sharp on a phone screen without spending time
-         * rendering pixels nobody sees.
+         * Sized for zooming, not just for the thumbnail. At screen size this is
+         * more pixels than a phone can show, but the preview exists so someone
+         * can pinch in and judge whether 9-up will still be readable — and a
+         * sheet rendered only for the thumbnail turns to mush the moment they do.
+         *
+         * Each sheet at this width costs roughly 12 MB, which is why the cache is
+         * bounded rather than unlimited.
          */
-        const val PREVIEW_WIDTH_PX = 1000
+        const val PREVIEW_WIDTH_PX = 1500
+
+        /** Sheets either side of the visible one are kept; the rest are dropped. */
+        const val CACHE_RADIUS = 1
     }
 }
