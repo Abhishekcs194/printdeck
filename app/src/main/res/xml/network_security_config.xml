@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Printing is a local-network protocol and many printers - including the Canon
+  TR4600 this was developed against - only offer cleartext IPP on port 631.
+  Android's network security config cannot express "private subnets only", so
+  cleartext is permitted here and then constrained in code: PrivateAddressGuard
+  rejects any host outside RFC1918 / ULA / link-local before a socket is opened,
+  and the app prefers ipps:// with trust-on-first-use pinning wherever the
+  printer offers it. See SECURITY.md for the full reasoning.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

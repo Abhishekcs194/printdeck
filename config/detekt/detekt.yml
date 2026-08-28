@@ -1,0 +1,39 @@
+# Deltas from detekt's default rule set. buildUponDefaultConfig = true, so this
+# file only records where PrintDesk deliberately differs.
+build:
+  maxIssues: 0
+
+complexity:
+  LongParameterList:
+    # Imposition settings legitimately carry many independent knobs; they are
+    # passed as data classes, and constructors of those data classes are exempt.
+    ignoreDefaultParameters: true
+  TooManyFunctions:
+    thresholdInClasses: 20
+    thresholdInFiles: 20
+    ignorePrivate: true
+
+style:
+  MagicNumber:
+    # Paper sizes, PDF user-space units and imposition geometry are full of
+    # meaningful constants. They live in named vals or enum entries - an A4
+    # page is 595.276pt wide and naming that adds nothing.
+    ignorePropertyDeclaration: true
+    ignoreCompanionObjectPropertyDeclaration: true
+    ignoreAnnotation: true
+    ignoreEnums: true
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    max: 4
+  # @Preview functions are called by the IDE and screenshot tooling, never from
+  # code, so they always look unused to static analysis.
+  UnusedPrivateMember:
+    ignoreAnnotated: ['Preview', 'Composable']
+
+naming:
+  FunctionNaming:
+    # @Composable functions are PascalCase by convention.
+    ignoreAnnotated: ['Composable']
+  TopLevelPropertyNaming:
+    constantPattern: '[A-Z][_A-Za-z0-9]*'
