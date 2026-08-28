@@ -92,12 +92,25 @@ sealed interface DiscoveryDiagnosis {
         override val explanation =
             "Every address on this network was checked and nothing answered as a printer."
 
+        /**
+         * Ordered by how often each turns out to be the cause, with the check
+         * that settles the question first.
+         *
+         * A printer can be joined to Wi-Fi and still have no IP address at all,
+         * if DHCP failed - its panel shows a connection but the address field is
+         * blank. Nothing can discover a device in that state, because there is no
+         * address to find, so the network page is the only thing that reveals it.
+         * Guessing at router settings while that is true wastes an afternoon.
+         */
         override val suggestions = listOf(
-            "Check the printer is switched on and its Wi-Fi light is steady",
+            "Print a network settings page from the printer's own menu. If its IP address " +
+                "is blank, the printer joined Wi-Fi but never got an address — restart it, " +
+                "or give it a fixed address",
             "Two access points often share one Wi-Fi name — your printer may have joined the other one",
-            "Some routers block devices on the same Wi-Fi from seeing each other; look for " +
-                "\"AP isolation\" or \"client isolation\" in the router settings",
-            "Print a network settings page from the printer's own menu to see its address, then add it directly",
+            "Check the printer is switched on and its Wi-Fi light is steady",
+            "Some routers stop devices on the same Wi-Fi from seeing each other; look for " +
+                "\"AP isolation\", \"client isolation\" or \"privacy separator\" in the router settings",
+            "As a last resort, switch on the printer's own direct Wi-Fi and connect this device straight to it",
         )
     }
 }

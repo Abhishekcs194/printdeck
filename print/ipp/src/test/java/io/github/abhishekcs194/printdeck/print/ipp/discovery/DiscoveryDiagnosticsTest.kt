@@ -103,6 +103,27 @@ class DiscoveryDiagnosticsTest {
     }
 
     @Test
+    fun `the check that settles the question comes first`() {
+        // A printer can be joined to Wi-Fi with no IP address at all, and nothing
+        // can discover a device that has no address. Reading its own network page
+        // is the only way to see that, so it must lead - anything else sends the
+        // user off changing router settings that were never the problem.
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(hasNetwork = true, localSubnets = listOf(home)),
+        )
+        assertThat(diagnosis.suggestions.first()).contains("network settings page")
+        assertThat(diagnosis.suggestions.first()).contains("blank")
+    }
+
+    @Test
+    fun `the printer's own direct wifi is offered as a last resort`() {
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(hasNetwork = true, localSubnets = listOf(home)),
+        )
+        assertThat(diagnosis.suggestions.last()).contains("direct Wi-Fi")
+    }
+
+    @Test
     fun `hard evidence outranks guesswork`() {
         // A reachable foreign router is proof; it must win over the generic case.
         val diagnosis = DiscoveryDiagnostics.diagnose(
