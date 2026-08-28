@@ -51,6 +51,21 @@ versioning is [semver](https://semver.org/).
   - 35 unit tests over the address arithmetic, the guard's boundaries, the
     planner's ordering and caps, and the diagnosis decision tree.
 
+- `:pdf:engine` — executes an imposition plan against a real document with
+  PdfBox-Android, producing the PDF that gets printed.
+  - Pages are placed as **vector Form XObjects**, never rasterised, so text stays
+    selectable and files stay small (an 8-page 2-up sample is 5 KB). A test asserts
+    the output contains form objects and no images, so a future "simplification"
+    into bitmap pasting fails the build.
+  - A source page used on many sheets is imported once, so poster tiling does not
+    multiply file size by the tile count.
+  - Page `/Rotate` is folded into the reported page size, so scanned documents are
+    not laid out sideways.
+  - Spills to a scratch file past 32 MB rather than risking the heap on a phone.
+  - `SampleOutputGenerator` writes one real PDF per layout mode to `build/samples/`
+    for hands-on checking — a booklet's fold order is not something an assertion
+    can confirm.
+
 ### Changed
 - Renamed from PrintDesk to **PrintDeck**. printdesk.io is an established
   print-shop-management product, so the original name would have been outranked
