@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.abhishekcs194.printdesk.core.design"
+    namespace = "io.github.abhishekcs194.printdeck.core.design"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {

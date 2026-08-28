@@ -21,7 +21,7 @@
 # --- Kotlin serialisation ------------------------------------------------
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.**
--keepclassmembers class io.github.abhishekcs194.printdesk.** {
+-keepclassmembers class io.github.abhishekcs194.printdeck.** {
     *** Companion;
 }
 

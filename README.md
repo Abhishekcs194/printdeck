@@ -1,4 +1,4 @@
-# PrintDesk
+# PrintDeck
 
 **The desktop print dialog, on your phone.**
 
@@ -7,7 +7,7 @@ genuinely useful control from a desktop print dialog is missing — N-up, bookle
 imposition, page splitting, poster tiling, binding gutters, tray selection, duplex
 edge, print quality, ink levels.
 
-PrintDesk re-imposes your document **on the device** into the sheet layout you
+PrintDeck re-imposes your document **on the device** into the sheet layout you
 actually want, then talks **directly to the printer over IPP** to drive the controls
 Android hides.
 
@@ -31,13 +31,13 @@ this repo is public, that claim is checkable rather than a promise.
 
 Imposition is **vector**. Pages are placed as PDF Form XObjects, so text stays sharp
 and selectable. The common shortcut — render to bitmap, paste, re-encode — produces
-fuzzy handouts and enormous files, and PrintDesk never does it. Rasterisation happens
+fuzzy handouts and enormous files, and PrintDeck never does it. Rasterisation happens
 only to draw the on-screen preview, and only from the already-imposed document, so the
 preview cannot drift from what prints.
 
 ### Printing
 
-PrintDesk speaks IPP directly, so it can ask the printer **what it can actually do**
+PrintDeck speaks IPP directly, so it can ask the printer **what it can actually do**
 and build the options screen from the answer — real trays, real duplex modes, real
 quality levels, real ink levels. No hardcoded lists, no offering a tray that isn't
 there.

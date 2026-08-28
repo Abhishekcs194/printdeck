@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Sentence case throughout: "Add new preset", never "Add New Preset". -->
 <resources>
-    <string name="app_name">PrintDesk</string>
+    <string name="app_name">PrintDeck</string>
 
     <string name="documents_title">Documents</string>
     <string name="documents_subtitle">Pick a file to lay out and print.</string>
 
     <string name="empty_documents_title">Nothing open yet</string>
-    <string name="empty_documents_body">Open a PDF or some images, or share them to PrintDesk from another app.</string>
+    <string name="empty_documents_body">Open a PDF or some images, or share them to PrintDeck from another app.</string>
 
     <string name="action_open_file">Open file</string>
     <string name="action_open_folder">Open folder</string>

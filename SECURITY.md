@@ -9,7 +9,7 @@ for anything exploitable.
 
 **Documents never leave the device.** Imposition, rendering and preview all happen
 locally. There is no backend, no account and no telemetry. The only outbound traffic
-PrintDesk ever makes is IPP to a printer on your own network.
+PrintDeck ever makes is IPP to a printer on your own network.
 
 ### Permissions
 

@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to PrintDesk are recorded here.
+All notable changes to PrintDeck are recorded here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 versioning is [semver](https://semver.org/).
 
@@ -27,6 +27,12 @@ versioning is [semver](https://semver.org/).
   and asserts the booklet reads in document order for every page count from 1 to 64.
 - Security posture: no storage permissions, `allowBackup=false`, R8 full mode,
   release log stripping, and `SECURITY.md` documenting the cleartext-IPP constraint.
+
+### Changed
+- Renamed from PrintDesk to **PrintDeck**. printdesk.io is an established
+  print-shop-management product, so the original name would have been outranked
+  in search by an adjacent commercial product — defeating the point of choosing a
+  findable name — and left the Play listing open to a name complaint.
 
 ### Notes
 - `compileSdk` is 37 while `targetSdk` is 36. AndroidX 1.19 and Compose 2026.08

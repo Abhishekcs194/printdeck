@@ -3,7 +3,7 @@ plugins {
 }
 
 android {
-    namespace = "io.github.abhishekcs194.printdesk.pdf.engine"
+    namespace = "io.github.abhishekcs194.printdeck.pdf.engine"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {

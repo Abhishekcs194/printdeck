@@ -1,5 +1,5 @@
 # Deltas from detekt's default rule set. buildUponDefaultConfig = true, so this
-# file only records where PrintDesk deliberately differs.
+# file only records where PrintDeck deliberately differs.
 build:
   maxIssues: 0
 

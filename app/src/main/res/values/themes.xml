@@ -2,10 +2,10 @@
 <resources>
     <!--
       Only the pre-Compose launch window is themed in XML. Everything after the
-      first frame is styled by PrintDeskTheme, so this stays minimal and just
+      first frame is styled by PrintDeckTheme, so this stays minimal and just
       avoids a white flash on a dark device.
     -->
-    <style name="Theme.PrintDesk.Starting" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.PrintDeck.Starting" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/window_background</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>

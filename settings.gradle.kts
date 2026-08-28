@@ -24,7 +24,7 @@ dependencyResolutionManagement {
 // project(":core:model") — compile-checked and refactor-safe.
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 
-rootProject.name = "PrintDesk"
+rootProject.name = "PrintDeck"
 
 include(":app")
 

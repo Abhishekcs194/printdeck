@@ -18,7 +18,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
-        android:name=".PrintDeskApplication"
+        android:name=".PrintDeckApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false"
@@ -27,14 +27,14 @@
         android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.PrintDesk.Starting">
+        android:theme="@style/Theme.PrintDeck.Starting">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:label="@string/app_name"
-            android:theme="@style/Theme.PrintDesk.Starting"
+            android:theme="@style/Theme.PrintDeck.Starting"
             android:windowSoftInputMode="adjustResize">
 
             <intent-filter>
@@ -43,7 +43,7 @@
             </intent-filter>
 
             <!--
-              Share target: "Print with PrintDesk" from any app. This is the only
+              Share target: "Print with PrintDeck" from any app. This is the only
               exported entry point, and it accepts documents rather than
               arbitrary text.
             -->

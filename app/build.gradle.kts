@@ -7,11 +7,11 @@ plugins {
 }
 
 android {
-    namespace = "io.github.abhishekcs194.printdesk"
+    namespace = "io.github.abhishekcs194.printdeck"
     compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "io.github.abhishekcs194.printdesk"
+        applicationId = "io.github.abhishekcs194.printdeck"
         minSdk = libs.versions.minSdk.get().toInt()
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1

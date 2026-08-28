@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Matches PrintDeskColors.background (light). The dark variant lives in values-night. -->
+    <!-- Matches PrintDeckColors.background (light). The dark variant lives in values-night. -->
     <color name="window_background">#FFFFFFFF</color>
     <color name="brand_blue">#FF0D6ABE</color>
 </resources>
