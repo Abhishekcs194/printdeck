@@ -54,6 +54,8 @@ class PrinterDiscovery(
         val printers: List<PrinterEndpoint> = emptyList(),
         val networksSearched: Int = 0,
         val networksTotal: Int = 0,
+        /** Populated once the search finishes. Explains an empty result. */
+        val diagnosis: DiscoveryDiagnosis? = null,
     ) {
         val found: Boolean get() = printers.isNotEmpty()
     }
@@ -69,8 +71,18 @@ class PrinterDiscovery(
     ): Flow<Progress> = channelFlow {
         val found = LinkedHashMap<String, PrinterEndpoint>()
 
-        suspend fun publish(phase: Phase, searched: Int = 0, total: Int = 0) {
-            send(Progress(phase, found.values.toList(), searched, total))
+        // Routers answering on networks this device is not part of. The one
+        // piece of hard evidence that a second network exists, which a sleeping
+        // printer or a weak signal cannot fake.
+        val foreignRouters = mutableListOf<String>()
+
+        suspend fun publish(
+            phase: Phase,
+            searched: Int = 0,
+            total: Int = 0,
+            diagnosis: DiscoveryDiagnosis? = null,
+        ) {
+            send(Progress(phase, found.values.toList(), searched, total, diagnosis))
         }
 
         /**
@@ -118,8 +130,11 @@ class PrinterDiscovery(
         publish(Phase.SEARCHING_NEARBY, nearby.size, nearby.size)
 
         // --- Ring 3: through the router ---------------------------------------
-        val shouldWiden = escalate && found.isEmpty()
-        if (shouldWiden) {
+        // Runs whenever nearby found nothing. When escalation is off the probe
+        // still happens but the sweep does not: probing is cheap, and without it
+        // there is no evidence to explain the failure with, which would leave the
+        // user staring at a bare "no printers found".
+        if (found.isEmpty()) {
             val wider = CandidateSubnetPlanner.plan(
                 topology.observations(rememberedSubnets),
                 CandidateSubnetPlanner.Depth.WIDE,
@@ -129,13 +144,28 @@ class PrinterDiscovery(
             wider.forEachIndexed { index, subnet ->
                 // One probe decides whether this network is worth 254 more.
                 if (scanner.subnetExists(subnet)) {
-                    scanner.sweep(listOf(subnet)).collectLatest { record(it) }
+                    foreignRouters += formatIpv4(subnet.networkAddress + 1)
+                    if (escalate) {
+                        scanner.sweep(listOf(subnet)).collectLatest { record(it) }
+                    }
                 }
                 publish(Phase.SEARCHING_WIDER, index + 1, wider.size)
             }
         }
 
-        publish(Phase.FINISHED)
+        val localSubnets = topology.localAddresses().map { it.sweepableSubnet() }
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(
+                hasNetwork = localSubnets.isNotEmpty(),
+                localSubnets = localSubnets,
+                // Only routers on networks we are genuinely not part of count.
+                foreignRoutersReachable = foreignRouters.filterNot { router ->
+                    localSubnets.any { parseIpv4(router) in it }
+                },
+                printersFound = found.size,
+            ),
+        )
+        publish(Phase.FINISHED, diagnosis = diagnosis)
     }
 
     private companion object {

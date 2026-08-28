@@ -42,8 +42,14 @@ versioning is [semver](https://semver.org/).
   - `PrivateAddressGuard` refuses any address outside RFC 1918 / link-local /
     carrier-NAT space before a socket opens, and rejects loopback so the client
     cannot be aimed at the phone itself.
-  - 26 unit tests over the address arithmetic, the guard's boundaries, and the
-    planner's ordering and caps.
+  - **Diagnosis when nothing is found** — instead of a bare "no printers found",
+    the search reports why: no network, or a router answering on a segment this
+    device is not part of (stated plainly, including that searching longer will
+    not help, because NAT blocks inbound traffic). Causes that cannot be proven
+    from the device, such as access-point client isolation, are offered as things
+    to check rather than asserted as the answer.
+  - 35 unit tests over the address arithmetic, the guard's boundaries, the
+    planner's ordering and caps, and the diagnosis decision tree.
 
 ### Changed
 - Renamed from PrintDesk to **PrintDeck**. printdesk.io is an established
