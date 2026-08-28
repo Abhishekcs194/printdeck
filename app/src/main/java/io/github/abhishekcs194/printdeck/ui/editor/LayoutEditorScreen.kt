@@ -219,7 +219,7 @@ private fun SettingsHandle(expanded: Boolean, onToggle: () -> Unit) {
 }
 
 private fun LayoutTab.defaultMode(): ImpositionMode = when (this) {
-    LayoutTab.NUp -> ImpositionMode.NUp(columns = 2, rows = 1)
+    LayoutTab.NUp -> ImpositionMode.NUp(columns = 1, rows = 1)
     LayoutTab.Booklet -> ImpositionMode.Booklet()
     LayoutTab.Split -> ImpositionMode.Split(columns = 2, rows = 1)
     LayoutTab.Poster -> ImpositionMode.Poster(columns = 2, rows = 2)

@@ -89,6 +89,10 @@ versioning is [semver](https://semver.org/).
 - Settings fold away behind a handle, giving the preview the whole screen. On a
   phone the controls otherwise crowd out the thing they are adjusting.
 
+- Opening a document now shows it one page per sheet, unchanged. Re-laying out a
+  document is a choice the user makes, not something already done to it by the
+  time they first look.
+
 ### Fixed
 - Reading order is no longer offered on a single-row or single-column grid, where
   "across" and "down" describe the same traversal and the control could not change

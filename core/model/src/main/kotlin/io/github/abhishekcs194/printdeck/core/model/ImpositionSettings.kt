@@ -26,9 +26,14 @@ sealed interface ImpositionMode {
 
     /**
      * N pages per sheet. The everyday case: handouts, lecture notes, drafts.
+     *
+     * Defaults to a 1x1 grid, which places each page on its own sheet unchanged.
+     * Opening a document should show it as it is; re-laying it out is a choice
+     * the user makes, not something that has already happened to their document
+     * by the time they first look at it.
      */
     data class NUp(
-        val columns: Int = 2,
+        val columns: Int = 1,
         val rows: Int = 1,
         val order: PageOrder = PageOrder.ACROSS_THEN_DOWN,
         val gutterPt: Double = 0.0,
