@@ -35,11 +35,18 @@ class LayoutEditorViewModel @Inject constructor(
         val settings: ImpositionSettings = ImpositionSettings(),
         val plan: ImpositionPlan? = null,
         val previewIndex: Int = 0,
-        val preview: Bitmap? = null,
+        /**
+         * Rendered sheets, keyed by index. Cached so swiping back to a sheet is
+         * instant and neighbours can be prefetched — a pager that blanks between
+         * pages feels broken however fast each render is.
+         */
+        val previews: Map<Int, Bitmap> = emptyMap(),
         val rendering: Boolean = false,
         val error: String? = null,
     ) {
         val sheetCount: Int get() = plan?.sheetCount ?: 0
+
+        fun previewOf(index: Int): Bitmap? = previews[index]
 
         /** "8 pages onto 2 sheets" — the number people actually care about. */
         val summary: String
@@ -101,6 +108,8 @@ class LayoutEditorViewModel @Inject constructor(
             it.copy(
                 plan = plan,
                 error = null,
+                // Every cached sheet was drawn under the old settings.
+                previews = emptyMap(),
                 previewIndex = it.previewIndex.coerceAtMost((plan.sheetCount - 1).coerceAtLeast(0)),
             )
         }
@@ -108,30 +117,29 @@ class LayoutEditorViewModel @Inject constructor(
     }
 
     private fun renderPreview() {
-        val state = _state.value
-        val document = state.document ?: return
-        val plan = state.plan ?: return
+        val snapshot = _state.value
+        val document = snapshot.document ?: return
+        val plan = snapshot.plan ?: return
         if (plan.sheets.isEmpty()) return
 
         previewJob?.cancel()
         previewJob = viewModelScope.launch {
             // Settings arrive in bursts while a control is being dragged. Waiting
-            // out the burst avoids imposing a document per frame.
-            delay(DEBOUNCE_MS)
+            // out the burst avoids imposing a document per frame. Swipes are not
+            // debounced, because a page that lags behind the finger feels broken.
+            if (snapshot.previews.isEmpty()) delay(DEBOUNCE_MS)
             _state.update { it.copy(rendering = true) }
 
             runCatching {
-                // Only the visible sheet is imposed. Preview then costs the same
-                // whether the document is four pages or four hundred, which is
-                // what keeps the controls feeling live on a large file.
-                val singleSheet = plan.copy(sheets = listOf(plan.sheets[state.previewIndex]))
-                val target = File(context.cacheDir, "preview.pdf")
-                engine.impose(document.file, singleSheet, target)
-                previewRenderer.renderPage(target, pageIndex = 0, targetWidthPx = PREVIEW_WIDTH_PX)
+                render(document, plan, snapshot.previewIndex)
+
+                // Prefetch either side so a swipe lands on a drawn sheet. Done
+                // after the visible one, so it never delays what is on screen.
+                listOf(snapshot.previewIndex - 1, snapshot.previewIndex + 1)
+                    .filter { it in plan.sheets.indices }
+                    .forEach { neighbour -> render(document, plan, neighbour) }
             }
-                .onSuccess { bitmap ->
-                    _state.update { it.copy(preview = bitmap, rendering = false) }
-                }
+                .onSuccess { _state.update { it.copy(rendering = false) } }
                 .onFailure { failure ->
                     // Cancellation is normal here: it means newer settings arrived.
                     if (failure is kotlinx.coroutines.CancellationException) throw failure
@@ -143,6 +151,25 @@ class LayoutEditorViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    /** Imposes and renders one sheet, then publishes it. */
+    private suspend fun render(
+        document: LoadedDocument,
+        plan: ImpositionPlan,
+        index: Int,
+    ) {
+        if (_state.value.previews.containsKey(index)) return
+
+        // Only the visible sheet is imposed. Preview then costs the same whether
+        // the document is four pages or four hundred, which is what keeps the
+        // controls feeling live on a large file.
+        val singleSheet = plan.copy(sheets = listOf(plan.sheets[index]))
+        val target = File(context.cacheDir, "preview-$index.pdf")
+        engine.impose(document.file, singleSheet, target)
+        val bitmap = previewRenderer.renderPage(target, pageIndex = 0, targetWidthPx = PREVIEW_WIDTH_PX)
+
+        _state.update { it.copy(previews = it.previews + (index to bitmap)) }
     }
 
     private companion object {

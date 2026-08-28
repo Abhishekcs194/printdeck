@@ -24,6 +24,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import io.github.abhishekcs194.printdeck.core.design.theme.PrintDeckTheme
 import io.github.abhishekcs194.printdeck.core.design.theme.Radius
@@ -76,6 +77,11 @@ fun <T> SegmentedTabs(
                     style = MaterialTheme.typography.labelLarge,
                     color = content,
                     textAlign = TextAlign.Center,
+                    // A wrapped label gets clipped by the fixed segment height,
+                    // which reads as a rendering fault rather than a long word.
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = Spacing.xs),
                 )
             }
         }

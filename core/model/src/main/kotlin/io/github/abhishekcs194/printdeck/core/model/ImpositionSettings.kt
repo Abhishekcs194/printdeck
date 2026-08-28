@@ -124,7 +124,13 @@ sealed interface ImpositionMode {
     }
 }
 
-/** Reading order for grid layouts. */
+/**
+ * Reading order for grid layouts.
+ *
+ * Two independent axes - which way pages advance, and which side they start
+ * from - enumerated as their four combinations. [of] exists so callers can
+ * change one axis without accidentally resetting the other.
+ */
 enum class PageOrder {
     ACROSS_THEN_DOWN,
     DOWN_THEN_ACROSS,
@@ -137,6 +143,19 @@ enum class PageOrder {
 
     val isColumnMajor: Boolean
         get() = this == DOWN_THEN_ACROSS || this == DOWN_THEN_ACROSS_RTL
+
+    fun withColumnMajor(columnMajor: Boolean): PageOrder = of(columnMajor, isRightToLeft)
+
+    fun withRightToLeft(rightToLeft: Boolean): PageOrder = of(isColumnMajor, rightToLeft)
+
+    companion object {
+        fun of(columnMajor: Boolean, rightToLeft: Boolean): PageOrder = when {
+            columnMajor && rightToLeft -> DOWN_THEN_ACROSS_RTL
+            columnMajor -> DOWN_THEN_ACROSS
+            rightToLeft -> ACROSS_THEN_DOWN_RTL
+            else -> ACROSS_THEN_DOWN
+        }
+    }
 }
 
 enum class BindingEdge { LEFT, RIGHT, TOP, BOTTOM }

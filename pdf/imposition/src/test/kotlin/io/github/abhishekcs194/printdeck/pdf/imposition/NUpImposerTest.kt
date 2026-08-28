@@ -178,6 +178,39 @@ class NUpImposerTest {
         assertThat(order).isEqualTo(listOf(3, 2, 1, 0))
     }
 
+    @Test
+    fun `reading order changes nothing on a single row or column`() {
+        // Across and down describe the same traversal when the grid has only one
+        // row, so the UI must not offer the choice there - a control that cannot
+        // change the output reads as a bug.
+        listOf(2 to 1, 1 to 2, 1 to 1).forEach { (columns, rows) ->
+            val across = clips(plan(2, ImpositionMode.NUp(columns, rows)).sheets[0])
+            val down = clips(
+                plan(2, ImpositionMode.NUp(columns, rows, order = PageOrder.DOWN_THEN_ACROSS))
+                    .sheets[0],
+            )
+            assertThat(down).isEqualTo(across)
+        }
+    }
+
+    @Test
+    fun `reading order does change a real grid`() {
+        val across = clips(plan(4, ImpositionMode.NUp(2, 2)).sheets[0])
+        val down = clips(
+            plan(4, ImpositionMode.NUp(2, 2, order = PageOrder.DOWN_THEN_ACROSS)).sheets[0],
+        )
+        assertThat(down).isNotEqualTo(across)
+    }
+
+    @Test
+    fun `changing one order axis leaves the other alone`() {
+        val rtlAcross = PageOrder.ACROSS_THEN_DOWN_RTL
+        assertThat(rtlAcross.withColumnMajor(true)).isEqualTo(PageOrder.DOWN_THEN_ACROSS_RTL)
+        assertThat(rtlAcross.withRightToLeft(false)).isEqualTo(PageOrder.ACROSS_THEN_DOWN)
+        assertThat(PageOrder.DOWN_THEN_ACROSS.withRightToLeft(true))
+            .isEqualTo(PageOrder.DOWN_THEN_ACROSS_RTL)
+    }
+
     private fun overlaps(a: RectPt, b: RectPt): Boolean =
         a.x < b.right - TOLERANCE && b.x < a.right - TOLERANCE &&
             a.y < b.top - TOLERANCE && b.y < a.top - TOLERANCE

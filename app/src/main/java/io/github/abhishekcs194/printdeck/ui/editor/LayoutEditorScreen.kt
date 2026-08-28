@@ -1,5 +1,21 @@
 package io.github.abhishekcs194.printdeck.ui.editor
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,13 +53,12 @@ import io.github.abhishekcs194.printdeck.core.design.theme.PrintDeckTheme
 import io.github.abhishekcs194.printdeck.core.design.theme.Spacing
 import io.github.abhishekcs194.printdeck.core.model.ImpositionMode
 import io.github.abhishekcs194.printdeck.core.model.Margins
-import io.github.abhishekcs194.printdeck.core.model.PageOrder
 import io.github.abhishekcs194.printdeck.core.model.PaperSize
 import io.github.abhishekcs194.printdeck.data.LoadedDocument
 
 /** The four things this app does, as the user thinks of them. */
 private enum class LayoutTab(val label: String) {
-    NUp("Pages per sheet"),
+    NUp("Pages"),
     Booklet("Booklet"),
     Split("Split"),
     Poster("Poster"),
@@ -66,6 +81,7 @@ fun LayoutEditorScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val colors = PrintDeckTheme.colors
+    var settingsExpanded by rememberSaveable { mutableStateOf(true) }
 
     LaunchedEffect(document.file) { viewModel.setDocument(document) }
 
@@ -108,41 +124,97 @@ fun LayoutEditorScreen(
             )
         }
 
-        Column(
+        SheetPreview(
+            state = state,
+            onShowSheet = viewModel::showSheet,
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
                 .padding(horizontal = Spacing.lg)
-                .padding(bottom = Spacing.xl),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-        ) {
-            SheetPreview(state = state, onShowSheet = viewModel::showSheet)
+                .padding(bottom = Spacing.sm),
+        )
 
-            state.error?.let { message ->
-                Notice(
-                    title = "That layout will not fit",
-                    body = message,
-                    icon = PrintDeckIcons.Warning,
-                    tone = colors.danger,
-                )
-            }
-
-            SegmentedTabs(
-                options = LayoutTab.entries,
-                selected = state.settings.mode.tab,
-                onSelect = { tab -> viewModel.setMode(tab.defaultMode()) },
-                label = { it.label },
+        state.error?.let { message ->
+            Notice(
+                title = "That layout will not fit",
+                body = message,
+                icon = PrintDeckIcons.Warning,
+                tone = colors.danger,
+                modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.sm),
             )
-
-            when (val mode = state.settings.mode) {
-                is ImpositionMode.NUp -> NUpControls(mode, viewModel)
-                is ImpositionMode.Booklet -> BookletControls(mode, viewModel)
-                is ImpositionMode.Split -> SplitControls(mode, viewModel)
-                is ImpositionMode.Poster -> PosterControls(mode, viewModel)
-            }
-
-            PaperControls(state, viewModel)
         }
+
+        SettingsHandle(expanded = settingsExpanded, onToggle = { settingsExpanded = !settingsExpanded })
+
+        AnimatedVisibility(
+            visible = settingsExpanded,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            Column(
+                modifier = Modifier
+                    // Capped so the preview always keeps a usable share of the
+                    // screen, however many controls a mode has.
+                    .heightIn(max = SETTINGS_MAX_HEIGHT)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.lg)
+                    .padding(bottom = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            ) {
+                SegmentedTabs(
+                    options = LayoutTab.entries,
+                    selected = state.settings.mode.tab,
+                    onSelect = { tab -> viewModel.setMode(tab.defaultMode()) },
+                    label = { it.label },
+                )
+
+                when (val mode = state.settings.mode) {
+                    is ImpositionMode.NUp -> NUpControls(mode, viewModel)
+                    is ImpositionMode.Booklet -> BookletControls(mode, viewModel)
+                    is ImpositionMode.Split -> SplitControls(mode, viewModel)
+                    is ImpositionMode.Poster -> PosterControls(mode, viewModel)
+                }
+
+                PaperControls(state, viewModel)
+            }
+        }
+    }
+}
+
+/**
+ * The grab handle between preview and settings.
+ *
+ * On a phone the controls crowd out the very thing they are adjusting, so this
+ * folds them away. Shaped like a sheet handle and spanning the full width, since
+ * a small chevron is a poor target for a thumb.
+ */
+@Composable
+private fun SettingsHandle(expanded: Boolean, onToggle: () -> Unit) {
+    val colors = PrintDeckTheme.colors
+    val rotation by animateFloatAsState(
+        targetValue = if (expanded) 0f else HALF_TURN,
+        label = "handleRotation",
+    )
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle)
+            .padding(vertical = Spacing.sm),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            painter = painterResource(PrintDeckIcons.CaretDown),
+            contentDescription = if (expanded) "Hide settings" else "Show settings",
+            tint = colors.mutedForeground,
+            modifier = Modifier.size(HANDLE_ICON).rotate(rotation),
+        )
+        Text(
+            text = if (expanded) "Hide settings" else "Show settings",
+            style = MaterialTheme.typography.labelLarge,
+            color = colors.mutedForeground,
+            modifier = Modifier.padding(start = Spacing.sm),
+        )
     }
 }
 
@@ -168,17 +240,35 @@ private fun NUpControls(mode: ImpositionMode.NUp, viewModel: LayoutEditorViewMod
             label = { (columns, rows) -> "${columns * rows}" },
         )
 
-        OptionRow(
-            label = "Reading order",
-            description = "Which way pages flow across the sheet.",
-        ) {
-            SegmentedTabs(
-                options = listOf(PageOrder.ACROSS_THEN_DOWN, PageOrder.DOWN_THEN_ACROSS),
-                selected = if (mode.order.isColumnMajor) PageOrder.DOWN_THEN_ACROSS else PageOrder.ACROSS_THEN_DOWN,
-                onSelect = { viewModel.setMode(mode.copy(order = it)) },
-                label = { if (it.isColumnMajor) "Down" else "Across" },
-                modifier = Modifier.fillMaxWidth(CONTROL_WIDTH),
-            )
+        // Across and down describe the same traversal when the grid is a single
+        // row or column, so the control is hidden there rather than offered and
+        // ignored - a setting that visibly does nothing reads as a broken app.
+        if (mode.columns > 1 && mode.rows > 1) {
+            OptionRow(
+                label = "Reading order",
+                description = "Which way pages flow across the sheet.",
+            ) {
+                SegmentedTabs(
+                    options = listOf(false, true),
+                    selected = mode.order.isColumnMajor,
+                    onSelect = { columnMajor ->
+                        viewModel.setMode(mode.copy(order = mode.order.withColumnMajor(columnMajor)))
+                    },
+                    label = { columnMajor -> if (columnMajor) "Down" else "Across" },
+                    modifier = Modifier.fillMaxWidth(CONTROL_WIDTH),
+                )
+            }
+        }
+
+        if (mode.columns > 1) {
+            OptionRow(
+                label = "Right to left",
+                description = "Starts pages on the right, for Arabic and Hebrew documents.",
+            ) {
+                PrintDeckSwitch(mode.order.isRightToLeft) { rightToLeft ->
+                    viewModel.setMode(mode.copy(order = mode.order.withRightToLeft(rightToLeft)))
+                }
+            }
         }
 
         OptionRow(label = "Gap between pages") {
@@ -368,5 +458,8 @@ private fun PrintDeckSwitch(checked: Boolean, onChange: (Boolean) -> Unit) {
 
 private const val POINTS_PER_MM = 72.0 / 25.4
 private const val CONTROL_WIDTH = 0.55f
+private const val HALF_TURN = 180f
+private val HANDLE_ICON = 16.dp
+private val SETTINGS_MAX_HEIGHT = 360.dp
 
 private fun Double.pointsToMillimetres(): Int = (this / POINTS_PER_MM).toInt()

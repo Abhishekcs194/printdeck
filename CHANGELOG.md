@@ -84,6 +84,19 @@ versioning is [semver](https://semver.org/).
 - Headless screenshot rendering writes real PNGs of each screen to
   `build/screenshots/`, so the interface can be reviewed without a device.
 
+- Preview sheets can be swiped through, with neighbours prefetched so a swipe
+  lands on a drawn sheet rather than a blank one.
+- Settings fold away behind a handle, giving the preview the whole screen. On a
+  phone the controls otherwise crowd out the thing they are adjusting.
+
+### Fixed
+- Reading order is no longer offered on a single-row or single-column grid, where
+  "across" and "down" describe the same traversal and the control could not change
+  anything. A setting that visibly does nothing reads as a broken app.
+- Changing reading order no longer silently discards the right-to-left setting;
+  the two axes are now independent, and right-to-left is exposed for N-up.
+- Segmented tab labels no longer wrap and clip against the fixed segment height.
+
 ### Changed
 - Renamed from PrintDesk to **PrintDeck**. printdesk.io is an established
   print-shop-management product, so the original name would have been outranked
