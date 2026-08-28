@@ -97,6 +97,10 @@ versioning is [semver](https://semver.org/).
   double-tap to zoom to a point or back out. Useful for checking whether 9-up
   will still be readable before committing paper to it.
 
+- The settings panel takes a larger share of the screen when open, sized as a
+  fraction of screen height rather than a fixed value, so the split holds on any
+  device.
+
 ### Fixed
 - Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
   are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.

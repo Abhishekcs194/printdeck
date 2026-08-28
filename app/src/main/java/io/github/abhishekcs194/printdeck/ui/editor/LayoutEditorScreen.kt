@@ -35,8 +35,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.abhishekcs194.printdeck.core.design.PrintDeckIcons
 import io.github.abhishekcs194.printdeck.core.design.component.ButtonSize
@@ -82,6 +83,8 @@ fun LayoutEditorScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val colors = PrintDeckTheme.colors
     var settingsExpanded by rememberSaveable { mutableStateOf(true) }
+    val settingsMaxHeight =
+        (LocalConfiguration.current.screenHeightDp * SETTINGS_HEIGHT_FRACTION).dp
 
     LaunchedEffect(document.file) { viewModel.setDocument(document) }
 
@@ -152,9 +155,10 @@ fun LayoutEditorScreen(
         ) {
             Column(
                 modifier = Modifier
-                    // Capped so the preview always keeps a usable share of the
-                    // screen, however many controls a mode has.
-                    .heightIn(max = SETTINGS_MAX_HEIGHT)
+                    // Capped as a share of the screen rather than a fixed height,
+                    // so the split holds on a small phone and on a tablet alike.
+                    // A fixed value tuned on one device is wrong on every other.
+                    .heightIn(max = settingsMaxHeight)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = Spacing.lg)
                     .padding(bottom = Spacing.lg),
@@ -460,6 +464,14 @@ private const val POINTS_PER_MM = 72.0 / 25.4
 private const val CONTROL_WIDTH = 0.55f
 private const val HALF_TURN = 180f
 private val HANDLE_ICON = 16.dp
-private val SETTINGS_MAX_HEIGHT = 360.dp
+
+/**
+ * Share of the screen the settings panel may take when open.
+ *
+ * Enough that most modes show their controls without scrolling, while still
+ * leaving the preview the larger half — it is the thing being adjusted, and a
+ * layout you cannot see is not worth configuring.
+ */
+private const val SETTINGS_HEIGHT_FRACTION = 0.46f
 
 private fun Double.pointsToMillimetres(): Int = (this / POINTS_PER_MM).toInt()

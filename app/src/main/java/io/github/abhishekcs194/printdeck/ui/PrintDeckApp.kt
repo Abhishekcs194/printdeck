@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -46,7 +47,7 @@ fun PrintDeckApp(sharedUri: Uri? = null) {
         modifier = Modifier.fillMaxSize().background(colors.background),
     ) {
         composable(Routes.DOCUMENTS) { entry ->
-            val viewModel: DocumentsViewModel = androidx.hilt.navigation.compose.hiltViewModel(entry)
+            val viewModel: DocumentsViewModel = hiltViewModel(entry)
 
             // A shared document goes straight into the editor: someone who chose
             // "print with PrintDeck" has already picked their file, and showing
