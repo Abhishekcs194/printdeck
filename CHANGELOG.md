@@ -28,6 +28,23 @@ versioning is [semver](https://semver.org/).
 - Security posture: no storage permissions, `allowBackup=false`, R8 full mode,
   release log stripping, and `SECURITY.md` documenting the cleartext-IPP constraint.
 
+- Layered printer discovery in `:print:ipp`, built for the case where a printer is
+  on the network but the phone cannot see it:
+  - **Widening rings** — remembered addresses, then mDNS plus a sweep of attached
+    networks, then networks reachable only through a router. The wide ring
+    escalates automatically when the nearby one finds nothing, because a user who
+    cannot find their printer has no way to know a wider search is what they need.
+  - **Probe before sweep** — one connection decides whether a network exists before
+    spending 254 on it, so a wide search costs seconds rather than minutes.
+  - **Subnet planning** from the device's own interfaces, its routing table, the
+    conventional router address of each range, and the ranges consumer gear ships
+    with. Remembered subnets are searched first, so the expensive path is paid once.
+  - `PrivateAddressGuard` refuses any address outside RFC 1918 / link-local /
+    carrier-NAT space before a socket opens, and rejects loopback so the client
+    cannot be aimed at the phone itself.
+  - 26 unit tests over the address arithmetic, the guard's boundaries, and the
+    planner's ordering and caps.
+
 ### Changed
 - Renamed from PrintDesk to **PrintDeck**. printdesk.io is an established
   print-shop-management product, so the original name would have been outranked
