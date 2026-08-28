@@ -66,6 +66,24 @@ versioning is [semver](https://semver.org/).
     for hands-on checking — a booklet's fold order is not something an assertion
     can confirm.
 
+- Documents screen — open a PDF or images through the system picker or the photo
+  picker, or receive one shared from another app. Session recents, empty state,
+  and inline error reporting.
+- Layout editor — live sheet preview with per-mode controls for N-up, booklet,
+  split and poster, plus paper size, margins and binding gutter.
+  - The preview is a render of the imposed PDF itself, so it cannot disagree with
+    what prints. Painting a mock layout in Compose would be a second
+    implementation of the imposition rules, and second implementations drift.
+  - Only the visible sheet is imposed, so preview cost is constant whether the
+    document is four pages or four hundred.
+- Images are converted to PDF at the door, in `:pdf:engine`, so photos take the
+  same imposition path as documents and nothing downstream learns a second format.
+- Design system: buttons, segmented tabs, choice chips, stepper, option rows,
+  empty state, inline notice, pills and status dots — plus 22 Phosphor icons (MIT)
+  bundled as vector drawables.
+- Headless screenshot rendering writes real PNGs of each screen to
+  `build/screenshots/`, so the interface can be reviewed without a device.
+
 ### Changed
 - Renamed from PrintDesk to **PrintDeck**. printdesk.io is an established
   print-shop-management product, so the original name would have been outranked

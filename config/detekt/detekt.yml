@@ -4,6 +4,12 @@ build:
   maxIssues: 0
 
 complexity:
+  LongMethod:
+    # A screen composable is a declarative description of a layout, not a
+    # procedure. Its length tracks how much is on screen, not how complex it is
+    # to reason about, so the imperative threshold does not apply. Logic still
+    # lives in view models, which this rule does police.
+    ignoreAnnotated: ['Composable']
   LongParameterList:
     # Imposition settings legitimately carry many independent knobs; they are
     # passed as data classes, and constructors of those data classes are exempt.
