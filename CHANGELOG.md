@@ -93,6 +93,10 @@ versioning is [semver](https://semver.org/).
   document is a choice the user makes, not something already done to it by the
   time they first look.
 
+- Pinch to zoom the preview, up to 8x, with one-finger pan once zoomed and
+  double-tap to zoom to a point or back out. Useful for checking whether 9-up
+  will still be readable before committing paper to it.
+
 ### Fixed
 - Reading order is no longer offered on a single-row or single-column grid, where
   "across" and "down" describe the same traversal and the control could not change
