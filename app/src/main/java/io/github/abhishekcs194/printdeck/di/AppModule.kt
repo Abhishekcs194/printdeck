@@ -10,6 +10,7 @@ import io.github.abhishekcs194.printdeck.pdf.engine.ImageToPdfConverter
 import io.github.abhishekcs194.printdeck.pdf.engine.ImpositionEngine
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfDocumentReader
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfPreviewRenderer
+import io.github.abhishekcs194.printdeck.print.ipp.IppClient
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.MdnsDiscovery
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkScanner
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkTopology
@@ -59,6 +60,10 @@ object AppModule {
     @Singleton
     fun provideMdnsDiscovery(@ApplicationContext context: Context): MdnsDiscovery =
         MdnsDiscovery(context)
+
+    @Provides
+    @Singleton
+    fun provideIppClient(): IppClient = IppClient()
 
     @Provides
     @Singleton

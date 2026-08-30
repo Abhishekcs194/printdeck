@@ -114,6 +114,16 @@ versioning is [semver](https://semver.org/).
   print dialog. The preview desaturates to match, so it never shows colour for a
   job that will print black and white.
 
+- **Discovery is now wired into the app.** A Printers screen runs the widening
+  search, confirms each result by asking it over IPP, and shows what the printer
+  actually reports: model, state, ink levels, duplex support, print qualities and
+  media types — including options the platform print dialog has no way to express.
+- Printers found are remembered, along with the subnet they were on, so the next
+  search checks the likely places first instead of paying for the widest search
+  every time.
+- Printers can be added by address, for networks the phone cannot search.
+- When nothing is found, the diagnosis is shown rather than a bare empty list.
+
 ### Fixed
 - Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
   are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.

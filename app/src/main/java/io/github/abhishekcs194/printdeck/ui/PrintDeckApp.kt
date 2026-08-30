@@ -19,10 +19,12 @@ import io.github.abhishekcs194.printdeck.data.LoadedDocument
 import io.github.abhishekcs194.printdeck.ui.documents.DocumentsScreen
 import io.github.abhishekcs194.printdeck.ui.documents.DocumentsViewModel
 import io.github.abhishekcs194.printdeck.ui.editor.LayoutEditorScreen
+import io.github.abhishekcs194.printdeck.ui.printers.PrintersScreen
 
 private object Routes {
     const val DOCUMENTS = "documents"
     const val EDITOR = "editor"
+    const val PRINTERS = "printers"
 }
 
 /**
@@ -59,8 +61,13 @@ fun PrintDeckApp(sharedUri: Uri? = null) {
                     document = opened
                     navController.navigate(Routes.EDITOR)
                 },
+                onOpenPrinters = { navController.navigate(Routes.PRINTERS) },
                 viewModel = viewModel,
             )
+        }
+
+        composable(Routes.PRINTERS) {
+            PrintersScreen(onBack = { navController.popBackStack() })
         }
 
         composable(Routes.EDITOR) {

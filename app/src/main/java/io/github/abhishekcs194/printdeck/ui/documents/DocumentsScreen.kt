@@ -39,6 +39,7 @@ import io.github.abhishekcs194.printdeck.core.design.component.ButtonVariant
 import io.github.abhishekcs194.printdeck.core.design.component.EmptyState
 import io.github.abhishekcs194.printdeck.core.design.component.Notice
 import io.github.abhishekcs194.printdeck.core.design.component.PrintDeckButton
+import io.github.abhishekcs194.printdeck.core.design.component.PrintDeckIconButton
 import io.github.abhishekcs194.printdeck.core.design.component.ScreenHeader
 import io.github.abhishekcs194.printdeck.core.design.component.Section
 import io.github.abhishekcs194.printdeck.core.design.theme.PrintDeckTheme
@@ -57,6 +58,7 @@ import io.github.abhishekcs194.printdeck.data.LoadedDocument
 @Composable
 fun DocumentsScreen(
     onDocumentOpened: (LoadedDocument) -> Unit,
+    onOpenPrinters: () -> Unit,
     viewModel: DocumentsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -87,6 +89,7 @@ fun DocumentsScreen(
             )
         },
         onSelect = onDocumentOpened,
+        onOpenPrinters = onOpenPrinters,
     )
 }
 
@@ -103,6 +106,7 @@ fun DocumentsContent(
     onOpenImages: () -> Unit,
     onSelect: (LoadedDocument) -> Unit,
     modifier: Modifier = Modifier,
+    onOpenPrinters: () -> Unit = {},
 ) {
     val colors = PrintDeckTheme.colors
     Column(
@@ -114,10 +118,18 @@ fun DocumentsContent(
             .padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
-        ScreenHeader(
-            title = "Documents",
-            subtitle = "Pick a file to lay out and print.",
-        )
+        Row(verticalAlignment = Alignment.Top) {
+            ScreenHeader(
+                title = "Documents",
+                subtitle = "Pick a file to lay out and print.",
+                modifier = Modifier.weight(1f),
+            )
+            PrintDeckIconButton(
+                icon = PrintDeckIcons.Printer,
+                contentDescription = "Printers",
+                onClick = onOpenPrinters,
+            )
+        }
 
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             PrintDeckButton(
