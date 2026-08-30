@@ -11,6 +11,7 @@ import io.github.abhishekcs194.printdeck.core.model.ColorMode
 import io.github.abhishekcs194.printdeck.core.model.ImpositionSettings
 import io.github.abhishekcs194.printdeck.core.model.PaperSize
 import io.github.abhishekcs194.printdeck.data.LoadedDocument
+import io.github.abhishekcs194.printdeck.data.PendingJob
 import io.github.abhishekcs194.printdeck.pdf.engine.ImpositionEngine
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfPreviewRenderer
 import io.github.abhishekcs194.printdeck.pdf.imposition.ImpositionPlan
@@ -31,6 +32,7 @@ class LayoutEditorViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val engine: ImpositionEngine,
     private val previewRenderer: PdfPreviewRenderer,
+    private val pendingJob: PendingJob,
 ) : ViewModel() {
 
     data class UiState(
@@ -150,8 +152,18 @@ class LayoutEditorViewModel @Inject constructor(
         }
     }
 
-    /** Clears the one-shot signal once the print dialog has been opened. */
-    fun consumePrintJob() = _state.update { it.copy(printJob = null) }
+    /**
+     * Hands the finished job over and clears the one-shot signal.
+     *
+     * The job goes to a holder rather than being carried in a route: it is a
+     * file and a set of attributes, not something a URL should describe.
+     */
+    fun consumePrintJob(): PrintJobSpec? {
+        val spec = _state.value.printJob
+        spec?.let(pendingJob::offer)
+        _state.update { it.copy(printJob = null) }
+        return spec
+    }
 
     /**
      * Recomputes the plan, then the preview.

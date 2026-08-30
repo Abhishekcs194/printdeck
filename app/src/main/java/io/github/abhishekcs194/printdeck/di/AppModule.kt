@@ -11,6 +11,7 @@ import io.github.abhishekcs194.printdeck.pdf.engine.ImpositionEngine
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfDocumentReader
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfPreviewRenderer
 import io.github.abhishekcs194.printdeck.print.ipp.IppClient
+import io.github.abhishekcs194.printdeck.print.ipp.IppPrinter
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.MdnsDiscovery
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkScanner
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkTopology
@@ -64,6 +65,13 @@ object AppModule {
     @Provides
     @Singleton
     fun provideIppClient(): IppClient = IppClient()
+
+    @Provides
+    @Singleton
+    fun provideIppPrinter(@ApplicationContext context: Context): IppPrinter =
+        // Rasterised jobs are large and single-use, so they live in the cache
+        // where the system can reclaim them if it needs the space.
+        IppPrinter(workingDirectory = context.cacheDir)
 
     @Provides
     @Singleton

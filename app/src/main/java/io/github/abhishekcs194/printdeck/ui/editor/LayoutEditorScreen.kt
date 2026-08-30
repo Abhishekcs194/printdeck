@@ -17,8 +17,6 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
-import io.github.abhishekcs194.printdeck.print.system.SystemPrinter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -86,23 +84,19 @@ fun LayoutEditorScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val colors = PrintDeckTheme.colors
-    // Built from the local context rather than injected: the print framework
-    // wants the Activity that is showing the dialog, not the application.
-    val context = LocalContext.current
-    val printer = remember(context) { SystemPrinter(context) }
     var settingsExpanded by rememberSaveable { mutableStateOf(true) }
     val settingsMaxHeight =
         (LocalConfiguration.current.screenHeightDp * SETTINGS_HEIGHT_FRACTION).dp
 
     LaunchedEffect(document.file) { viewModel.setDocument(document) }
 
-    // Opening the dialog is a one-shot event, so the job is cleared once handed
-    // over - otherwise returning to this screen would reopen the dialog.
+    // A prepared job moves the user on to the print screen, where the options
+    // come from the printer rather than from the platform.
     LaunchedEffect(state.printJob) {
-        val job = state.printJob ?: return@LaunchedEffect
-        printer.print(job)
-        viewModel.consumePrintJob()
-        onPrint()
+        if (state.printJob != null) {
+            viewModel.consumePrintJob()
+            onPrint()
+        }
     }
 
     Column(

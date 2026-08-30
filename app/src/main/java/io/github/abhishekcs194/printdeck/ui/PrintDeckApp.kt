@@ -19,12 +19,14 @@ import io.github.abhishekcs194.printdeck.data.LoadedDocument
 import io.github.abhishekcs194.printdeck.ui.documents.DocumentsScreen
 import io.github.abhishekcs194.printdeck.ui.documents.DocumentsViewModel
 import io.github.abhishekcs194.printdeck.ui.editor.LayoutEditorScreen
+import io.github.abhishekcs194.printdeck.ui.print.PrintSetupScreen
 import io.github.abhishekcs194.printdeck.ui.printers.PrintersScreen
 
 private object Routes {
     const val DOCUMENTS = "documents"
     const val EDITOR = "editor"
     const val PRINTERS = "printers"
+    const val PRINT = "print"
 }
 
 /**
@@ -70,12 +72,25 @@ fun PrintDeckApp(sharedUri: Uri? = null) {
             PrintersScreen(onBack = { navController.popBackStack() })
         }
 
+        composable(Routes.PRINT) {
+            PrintSetupScreen(
+                onBack = { navController.popBackStack() },
+                onChoosePrinter = { navController.navigate(Routes.PRINTERS) },
+                // Finishing returns to the documents list rather than the editor:
+                // the job is done, and dropping the user back on the settings
+                // they just committed invites them to send it twice.
+                onFinished = {
+                    navController.popBackStack(Routes.DOCUMENTS, inclusive = false)
+                },
+            )
+        }
+
         composable(Routes.EDITOR) {
             document?.let { opened ->
                 LayoutEditorScreen(
                     document = opened,
                     onBack = { navController.popBackStack() },
-                    onPrint = { /* Printing lands with the IPP transport. */ },
+                    onPrint = { navController.navigate(Routes.PRINT) },
                 )
             }
         }

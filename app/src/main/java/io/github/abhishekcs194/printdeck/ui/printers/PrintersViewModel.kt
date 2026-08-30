@@ -3,7 +3,9 @@ package io.github.abhishekcs194.printdeck.ui.printers
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.abhishekcs194.printdeck.data.ChosenPrinter
 import io.github.abhishekcs194.printdeck.data.KnownPrintersStore
+import io.github.abhishekcs194.printdeck.data.SelectedPrinter
 import io.github.abhishekcs194.printdeck.print.ipp.IppClient
 import io.github.abhishekcs194.printdeck.print.ipp.PrinterCapabilities
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.DiscoverySource
@@ -24,6 +26,7 @@ class PrintersViewModel @Inject constructor(
     private val discovery: PrinterDiscovery,
     private val ippClient: IppClient,
     private val knownPrinters: KnownPrintersStore,
+    private val selectedPrinter: SelectedPrinter,
 ) : ViewModel() {
 
     /** A discovered printer, once it has confirmed what it is. */
@@ -150,6 +153,12 @@ class PrintersViewModel @Inject constructor(
     }
 
     fun dismissManualEntryError() = _state.update { it.copy(manualEntryError = null) }
+
+    /** Chooses a printer for printing. Only confirmed printers can be selected. */
+    fun select(printer: FoundPrinter) {
+        val capabilities = printer.capabilities ?: return
+        selectedPrinter.select(ChosenPrinter(printer.endpoint, capabilities))
+    }
 
     private companion object {
         const val IPP_PORT = 631

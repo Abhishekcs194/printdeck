@@ -1,6 +1,7 @@
 package io.github.abhishekcs194.printdeck.ui.printers
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +59,7 @@ import io.github.abhishekcs194.printdeck.print.ipp.PrinterCapabilities
 @Composable
 fun PrintersScreen(
     onBack: () -> Unit,
+    onPrinterChosen: () -> Unit = onBack,
     viewModel: PrintersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -117,7 +119,16 @@ fun PrintersScreen(
             Section(title = "Found", contentPadding = false) {
                 state.printers.forEachIndexed { index, printer ->
                     if (index > 0) HorizontalDivider(thickness = 1.dp, color = colors.border)
-                    PrinterRow(printer)
+                    PrinterRow(
+                        printer = printer,
+                        // Only a confirmed printer can be chosen; a lead that has
+                        // not answered as a printer cannot be printed to.
+                        onSelect = if (printer.confirmed) {
+                            { viewModel.select(printer); onPrinterChosen() }
+                        } else {
+                            null
+                        },
+                    )
                 }
             }
         }
@@ -162,12 +173,18 @@ fun PrintersScreen(
 }
 
 @Composable
-private fun PrinterRow(printer: PrintersViewModel.FoundPrinter) {
+private fun PrinterRow(
+    printer: PrintersViewModel.FoundPrinter,
+    onSelect: (() -> Unit)?,
+) {
     val colors = PrintDeckTheme.colors
     val capabilities = printer.capabilities
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(Spacing.lg),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onSelect != null) Modifier.clickable(onClick = onSelect) else Modifier)
+            .padding(Spacing.lg),
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Box(

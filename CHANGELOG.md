@@ -124,6 +124,17 @@ versioning is [semver](https://semver.org/).
 - Printers can be added by address, for networks the phone cannot search.
 - When nothing is found, the diagnosis is shown rather than a bare empty list.
 
+- **Printing over IPP, from PrintDeck's own options screen.** Every control is
+  built from what the printer reported, so it can only offer real choices — no
+  duplex on a simplex machine, no glossy on a printer with one paper type. Print
+  quality and media type appear here for the first time; neither can be expressed
+  through Android's print framework at all.
+- Documents are rasterised on the device when the printer cannot take PDF, which
+  is most consumer inkjets.
+- Job progress is followed until the printer says it is finished.
+- Android's print dialog is kept as an explicit fallback, since it reaches
+  printers that do not speak IPP and offers Save as PDF.
+
 ### Fixed
 - Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
   are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.
