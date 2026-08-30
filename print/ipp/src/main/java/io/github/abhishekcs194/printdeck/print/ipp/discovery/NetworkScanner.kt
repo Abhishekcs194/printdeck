@@ -2,9 +2,8 @@ package io.github.abhishekcs194.printdeck.print.ipp.discovery
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
@@ -68,7 +67,7 @@ class NetworkScanner(
     fun sweep(
         subnets: List<Ipv4Subnet>,
         ports: List<PrinterPort> = PrinterPort.sweepOrder,
-    ): Flow<PrinterEndpoint> = callbackFlow {
+    ): Flow<PrinterEndpoint> = channelFlow {
         val gate = Semaphore(concurrency)
 
         for (subnet in subnets) {
@@ -80,7 +79,7 @@ class NetworkScanner(
                     launch {
                         gate.withPermit {
                             if (canConnect(address, port.port)) {
-                                trySend(
+                                send(
                                     PrinterEndpoint(
                                         address = address,
                                         port = port.port,
@@ -94,7 +93,11 @@ class NetworkScanner(
                 }
             }
         }
-        awaitClose { }
+        // No awaitClose: channelFlow closes once this block returns and every
+        // probe it launched has finished. An awaitClose here would keep the flow
+        // open forever, and a collector waiting on it would never see the sweep
+        // end - which is a search that runs indefinitely rather than reporting
+        // what it found.
     }.flowOn(dispatcher)
 
     /**

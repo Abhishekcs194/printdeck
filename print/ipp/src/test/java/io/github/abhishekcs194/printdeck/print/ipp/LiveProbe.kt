@@ -2,7 +2,13 @@ package io.github.abhishekcs194.printdeck.print.ipp
 
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.DiscoverySource
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.PrinterEndpoint
+import com.google.common.truth.Truth.assertThat
+import io.github.abhishekcs194.printdeck.print.ipp.discovery.Ipv4Subnet
+import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkScanner
+import io.github.abhishekcs194.printdeck.print.ipp.discovery.parseIpv4
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import kotlin.io.path.createTempDirectory
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -71,7 +77,31 @@ class LiveProbe {
         }
     }
 
+    /**
+     * Sweeps the printer's own subnet, checking both halves of the contract:
+     * that the printer is found, and that the sweep finishes afterwards. The
+     * second is the one that broke — a sweep that emits correctly but never
+     * completes leaves the search running forever.
+     */
+    @Test
+    fun `sweeping the printer's subnet finds it and finishes`() {
+        val address = System.getenv("PRINTDECK_TEST_PRINTER")
+        assumeTrue("set PRINTDECK_TEST_PRINTER to run this", address != null)
+
+        val subnet = Ipv4Subnet.containing(parseIpv4(address!!), SUBNET_PREFIX)
+        val found = runBlocking {
+            withTimeout(SWEEP_TIMEOUT_MS) {
+                NetworkScanner().sweep(listOf(subnet)).toList()
+            }
+        }
+
+        println("swept ${subnet.asCidr()} -> ${found.map { it.key }}")
+        assertThat(found.map { it.address }).contains(address)
+    }
+
     private companion object {
         const val IPP_PORT = 631
+        const val SUBNET_PREFIX = 24
+        const val SWEEP_TIMEOUT_MS = 30_000L
     }
 }

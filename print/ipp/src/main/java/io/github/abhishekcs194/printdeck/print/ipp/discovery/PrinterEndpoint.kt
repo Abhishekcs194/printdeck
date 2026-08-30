@@ -63,5 +63,14 @@ data class PrinterEndpoint(
     /** Identity for de-duplication: the same box found by mDNS and by sweep is one printer. */
     val key: String get() = "$address:$port"
 
+    /**
+     * True when this port can answer Get-Printer-Attributes.
+     *
+     * LPD and raw ports accept jobs but describe nothing, so a printer found on
+     * one of those cannot report its capabilities and is worth less than the
+     * same printer found on IPP.
+     */
+    val speaksIpp: Boolean get() = port == PrinterPort.IPP.port || port == PrinterPort.IPPS.port
+
     val displayName: String get() = name ?: makeAndModel ?: address
 }

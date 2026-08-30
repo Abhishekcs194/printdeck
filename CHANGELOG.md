@@ -136,6 +136,12 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- A network sweep never completed, so the printer search ran forever and never
+  reported what it had found. The flow was held open by an `awaitClose` that had
+  nothing to wait for.
+- A printer answering on several ports at once was listed several times. Results
+  are now keyed by address, and the IPP port wins because it is the only one that
+  can report capabilities.
 - Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
   are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.
 - Rendered sheets are no longer cached without bound; only the visible sheet and

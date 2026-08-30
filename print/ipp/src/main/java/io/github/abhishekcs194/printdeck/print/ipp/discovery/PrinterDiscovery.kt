@@ -86,14 +86,24 @@ class PrinterDiscovery(
         }
 
         /**
-         * mDNS knows a printer's name and resource path; a sweep only knows that
-         * a port is open. So a later announcement is allowed to enrich an earlier
-         * scan hit, but never to overwrite richer detail with poorer.
+         * Records a find, keyed by address rather than by address and port.
+         *
+         * One printer usually answers on several ports at once — IPP on 631, LPD
+         * on 515, raw on 9100 are all the same machine. Keying by port would list
+         * it three times and spend three identification requests on it, two of
+         * which cannot succeed because those ports do not speak IPP.
+         *
+         * Where the same address turns up more than once, IPP wins: it is the
+         * only one of them that can report what the printer can do. Beyond that,
+         * mDNS knows a printer's name and resource path while a sweep only knows
+         * a port is open, so an announcement may enrich an earlier scan hit but
+         * never replace richer detail with poorer.
          */
         fun record(endpoint: PrinterEndpoint) {
-            val existing = found[endpoint.key]
-            found[endpoint.key] = when {
+            val existing = found[endpoint.address]
+            found[endpoint.address] = when {
                 existing == null -> endpoint
+                endpoint.speaksIpp && !existing.speaksIpp -> endpoint
                 existing.name == null && endpoint.name != null -> endpoint
                 else -> existing
             }
