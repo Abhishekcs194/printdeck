@@ -36,7 +36,7 @@ class LayoutEditorViewModel @Inject constructor(
     data class UiState(
         val document: LoadedDocument? = null,
         val settings: ImpositionSettings = ImpositionSettings(),
-        val colorMode: ColorMode = ColorMode.COLOR,
+        val colorMode: ColorMode = ColorMode.MONOCHROME,
         val plan: ImpositionPlan? = null,
         val previewIndex: Int = 0,
         /**

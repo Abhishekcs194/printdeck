@@ -11,11 +11,15 @@ package io.github.abhishekcs194.printdeck.core.model
 enum class ColorMode(val displayName: String) {
     COLOR("Colour"),
 
+
     /**
-     * Black and white. Worth having as an explicit choice rather than a printer
-     * default: a cartridge runs out without warning, and being able to say "use
-     * the ink I still have" is the difference between a job printing and a job
-     * failing halfway.
+     * Black and white, and the default.
+     *
+     * Most of what people print is text, colour ink is the expensive one, and a
+     * colour cartridge runs dry long before the black one on a printer used for
+     * documents. Defaulting to colour spends the scarcer ink on a page that
+     * rarely needed it — and someone printing a photo will go looking for the
+     * setting anyway, while someone printing a document will not.
      */
     MONOCHROME("Black & white"),
 }
