@@ -22,6 +22,7 @@ dependencies {
     // HP's IPP implementation (Apache-2.0). Speaking IPP directly is what lets
     // us ask the printer what it can actually do, instead of guessing.
     implementation(libs.jipp.core)
+    implementation(libs.jipp.pdl)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)

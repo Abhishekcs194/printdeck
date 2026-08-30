@@ -100,6 +100,9 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 # --- PDF & printing ------------------------------------------------------
 pdfbox-android = { group = "com.tom-roush", name = "pdfbox-android", version.ref = "pdfboxAndroid" }
 jipp-core = { group = "com.hp.jipp", name = "jipp-core", version.ref = "jipp" }
+# PWG-Raster and URF encoders. Needed because many consumer inkjets accept no
+# PDF at all, so a direct IPP job has to be rasterised on the device.
+jipp-pdl = { group = "com.hp.jipp", name = "jipp-pdl", version.ref = "jipp" }
 
 # --- Test ----------------------------------------------------------------
 junit = { group = "junit", name = "junit", version.ref = "junit" }

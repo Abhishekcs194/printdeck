@@ -3,6 +3,7 @@ package io.github.abhishekcs194.printdeck.print.ipp
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.DiscoverySource
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.PrinterEndpoint
 import kotlinx.coroutines.runBlocking
+import kotlin.io.path.createTempDirectory
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
@@ -35,6 +36,39 @@ class LiveProbe {
         println("qualities  = ${capabilities.printQualities}")
         println("mediaTypes = ${capabilities.mediaTypes}")
         println("supplies   = ${capabilities.supplies}")
+    }
+
+    /**
+     * Checks that a job built from these options would be accepted, without
+     * printing anything. Validate-Job is the only way to test the request
+     * construction against real hardware without spending paper on it.
+     */
+    @Test
+    fun `printer accepts a job built from our options`() {
+        val address = System.getenv("PRINTDECK_TEST_PRINTER")
+        assumeTrue("set PRINTDECK_TEST_PRINTER to run this", address != null)
+
+        val endpoint = PrinterEndpoint(address!!, IPP_PORT, DiscoverySource.MANUAL)
+        val printer = IppPrinter(workingDirectory = createTempDirectory().toFile())
+
+        val combinations = listOf(
+            "mono, one-sided" to IppPrintOptions(),
+            "mono, duplex long edge" to IppPrintOptions(
+                sides = IppPrintOptions.SIDES_LONG_EDGE,
+            ),
+            "colour, 2 copies, A4" to IppPrintOptions(
+                colorMode = IppPrintOptions.COLOR_MODE_COLOR,
+                copies = 2,
+                media = "iso_a4_210x297mm",
+            ),
+        )
+
+        combinations.forEach { (label, options) ->
+            val accepted = runBlocking {
+                printer.validate(endpoint, "PrintDeck validation", options, "image/pwg-raster")
+            }
+            println("validate [$label] -> $accepted")
+        }
     }
 
     private companion object {
