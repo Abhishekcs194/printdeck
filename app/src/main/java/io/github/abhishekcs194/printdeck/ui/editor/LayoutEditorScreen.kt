@@ -55,6 +55,7 @@ import io.github.abhishekcs194.printdeck.core.design.component.SegmentedTabs
 import io.github.abhishekcs194.printdeck.core.design.component.Stepper
 import io.github.abhishekcs194.printdeck.core.design.theme.PrintDeckTheme
 import io.github.abhishekcs194.printdeck.core.design.theme.Spacing
+import io.github.abhishekcs194.printdeck.core.model.ColorMode
 import io.github.abhishekcs194.printdeck.core.model.ImpositionMode
 import io.github.abhishekcs194.printdeck.core.model.Margins
 import io.github.abhishekcs194.printdeck.core.model.PaperSize
@@ -99,13 +100,7 @@ fun LayoutEditorScreen(
     // over - otherwise returning to this screen would reopen the dialog.
     LaunchedEffect(state.printJob) {
         val job = state.printJob ?: return@LaunchedEffect
-        printer.print(
-            document = job.file,
-            jobName = job.name,
-            pageCount = job.sheetCount,
-            paper = job.paper,
-            landscape = job.landscape,
-        )
+        printer.print(job)
         viewModel.consumePrintJob()
         onPrint()
     }
@@ -203,6 +198,7 @@ fun LayoutEditorScreen(
                 }
 
                 PaperControls(state, viewModel)
+                InkControls(state, viewModel)
             }
         }
     }
@@ -465,6 +461,24 @@ private fun PaperControls(
                 suffix = "mm",
             )
         }
+    }
+}
+
+@Composable
+private fun InkControls(
+    state: LayoutEditorViewModel.UiState,
+    viewModel: LayoutEditorViewModel,
+) {
+    Section(
+        title = "Ink",
+        description = "Black and white also prints when a colour cartridge has run out.",
+    ) {
+        SegmentedTabs(
+            options = ColorMode.entries,
+            selected = state.colorMode,
+            onSelect = viewModel::setColorMode,
+            label = { it.displayName },
+        )
     }
 }
 

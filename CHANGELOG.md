@@ -110,6 +110,10 @@ versioning is [semver](https://semver.org/).
   - Colour mode is left to the dialog rather than forced, since which mode is
     right depends on which cartridge the printer currently has ink in.
 
+- Ink choice: colour or black and white, set in the app rather than left to the
+  print dialog. The preview desaturates to match, so it never shows colour for a
+  job that will print black and white.
+
 ### Fixed
 - Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
   are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.

@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -38,6 +40,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import io.github.abhishekcs194.printdeck.core.design.theme.PrintDeckTheme
+import io.github.abhishekcs194.printdeck.core.model.ColorMode
 import io.github.abhishekcs194.printdeck.core.design.theme.Radius
 import io.github.abhishekcs194.printdeck.core.design.theme.Spacing
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -113,6 +116,7 @@ fun SheetPreview(
                 val isCurrent = page == pagerState.currentPage
                 Sheet(
                     bitmap = state.previewOf(page),
+                    monochrome = state.colorMode == ColorMode.MONOCHROME,
                     // Lambdas, not values: the read happens inside graphicsLayer
                     // during draw, so a pinch never triggers recomposition.
                     scale = { if (isCurrent) zoom.scale else 1f },
@@ -143,6 +147,7 @@ fun SheetPreview(
 @Composable
 private fun Sheet(
     bitmap: android.graphics.Bitmap?,
+    monochrome: Boolean,
     scale: () -> Float,
     offset: () -> Offset,
 ) {
@@ -163,6 +168,15 @@ private fun Sheet(
                 bitmap = bitmap.asImageBitmap(),
                 contentDescription = "Imposed sheet",
                 contentScale = ContentScale.Fit,
+                // Desaturated at draw time rather than re-rendered: the sheet on
+                // disk is unchanged, and the printer is what actually converts.
+                // Showing colour after the user picked black and white would be
+                // the preview quietly disagreeing with the output.
+                colorFilter = if (monochrome) {
+                    ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+                } else {
+                    null
+                },
                 modifier = Modifier
                     .graphicsLayer {
                         val current = scale()

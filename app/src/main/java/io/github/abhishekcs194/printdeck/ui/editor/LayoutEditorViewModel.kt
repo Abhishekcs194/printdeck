@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.abhishekcs194.printdeck.core.model.ImpositionMode
+import io.github.abhishekcs194.printdeck.core.model.ColorMode
 import io.github.abhishekcs194.printdeck.core.model.ImpositionSettings
 import io.github.abhishekcs194.printdeck.core.model.PaperSize
 import io.github.abhishekcs194.printdeck.data.LoadedDocument
@@ -14,6 +15,7 @@ import io.github.abhishekcs194.printdeck.pdf.engine.ImpositionEngine
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfPreviewRenderer
 import io.github.abhishekcs194.printdeck.pdf.imposition.ImpositionPlan
 import io.github.abhishekcs194.printdeck.pdf.imposition.Imposer
+import io.github.abhishekcs194.printdeck.print.system.PrintJobSpec
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +36,7 @@ class LayoutEditorViewModel @Inject constructor(
     data class UiState(
         val document: LoadedDocument? = null,
         val settings: ImpositionSettings = ImpositionSettings(),
+        val colorMode: ColorMode = ColorMode.COLOR,
         val plan: ImpositionPlan? = null,
         val previewIndex: Int = 0,
         /**
@@ -46,7 +49,7 @@ class LayoutEditorViewModel @Inject constructor(
         /** True while the full document is being imposed for printing. */
         val preparingPrint: Boolean = false,
         /** Set once a job is ready to hand to the print dialog; consumed by the UI. */
-        val printJob: PrintJob? = null,
+        val printJob: PrintJobSpec? = null,
         val error: String? = null,
     ) {
         val sheetCount: Int get() = plan?.sheetCount ?: 0
@@ -63,15 +66,6 @@ class LayoutEditorViewModel @Inject constructor(
 
         private fun Int.plural(noun: String) = if (this == 1) "1 $noun" else "$this ${noun}s"
     }
-
-    /** A finished job, waiting to be handed to the platform print dialog. */
-    data class PrintJob(
-        val file: File,
-        val name: String,
-        val sheetCount: Int,
-        val paper: PaperSize,
-        val landscape: Boolean,
-    )
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -91,6 +85,14 @@ class LayoutEditorViewModel @Inject constructor(
 
     /** Switches layout mode, keeping shared settings such as paper and margins. */
     fun setMode(mode: ImpositionMode) = updateSettings { it.copy(mode = mode) }
+
+    /**
+     * Changing ink does not change the layout, so no sheet is re-imposed. The
+     * preview simply draws the existing render desaturated, which is both
+     * instant and honest — the sheet really is unchanged, and the conversion
+     * happens in the printer.
+     */
+    fun setColorMode(mode: ColorMode) = _state.update { it.copy(colorMode = mode) }
 
     fun showSheet(index: Int) {
         val count = _state.value.sheetCount
@@ -125,12 +127,13 @@ class LayoutEditorViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             preparingPrint = false,
-                            printJob = PrintJob(
-                                file = file,
+                            printJob = PrintJobSpec(
+                                document = file,
                                 name = document.displayName,
                                 sheetCount = plan.sheetCount,
                                 paper = it.settings.sheet,
                                 landscape = plan.sheetSize.isLandscape,
+                                colorMode = it.colorMode,
                             ),
                         )
                     }
