@@ -16,6 +16,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import io.github.abhishekcs194.printdeck.print.system.SystemPrinter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -82,11 +85,30 @@ fun LayoutEditorScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val colors = PrintDeckTheme.colors
+    // Built from the local context rather than injected: the print framework
+    // wants the Activity that is showing the dialog, not the application.
+    val context = LocalContext.current
+    val printer = remember(context) { SystemPrinter(context) }
     var settingsExpanded by rememberSaveable { mutableStateOf(true) }
     val settingsMaxHeight =
         (LocalConfiguration.current.screenHeightDp * SETTINGS_HEIGHT_FRACTION).dp
 
     LaunchedEffect(document.file) { viewModel.setDocument(document) }
+
+    // Opening the dialog is a one-shot event, so the job is cleared once handed
+    // over - otherwise returning to this screen would reopen the dialog.
+    LaunchedEffect(state.printJob) {
+        val job = state.printJob ?: return@LaunchedEffect
+        printer.print(
+            document = job.file,
+            jobName = job.name,
+            pageCount = job.sheetCount,
+            paper = job.paper,
+            landscape = job.landscape,
+        )
+        viewModel.consumePrintJob()
+        onPrint()
+    }
 
     Column(
         modifier = Modifier
@@ -119,11 +141,13 @@ fun LayoutEditorScreen(
                 )
             }
             PrintDeckButton(
-                text = "Print",
+                text = if (state.preparingPrint) "Preparing…" else "Print",
                 icon = PrintDeckIcons.Printer,
                 size = ButtonSize.Small,
-                onClick = onPrint,
-                enabled = state.sheetCount > 0,
+                onClick = viewModel::preparePrint,
+                // Imposing the whole document takes a moment on a long file;
+                // a second tap would start it again.
+                enabled = state.sheetCount > 0 && !state.preparingPrint,
             )
         }
 

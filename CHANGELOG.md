@@ -101,6 +101,15 @@ versioning is [semver](https://semver.org/).
   fraction of screen height rather than a fixed value, so the split holds on any
   device.
 
+- Printing works. The Print button imposes the whole document and hands it to the
+  platform print dialog, which reaches any printer the phone can already see
+  through Mopria, and offers "Save as PDF" when there is none.
+  - Chosen paper size and orientation are passed through as starting attributes,
+    so a document imposed for A4 landscape is not silently rescaled onto portrait
+    Letter.
+  - Colour mode is left to the dialog rather than forced, since which mode is
+    right depends on which cartridge the printer currently has ink in.
+
 ### Fixed
 - Pinch zoom no longer recomposes the pager on every touch event. Scale and offset
   are read inside `graphicsLayer`, so a gesture re-runs only the draw phase.

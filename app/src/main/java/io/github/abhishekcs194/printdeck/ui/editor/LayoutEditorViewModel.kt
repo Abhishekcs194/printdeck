@@ -8,6 +8,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.abhishekcs194.printdeck.core.model.ImpositionMode
 import io.github.abhishekcs194.printdeck.core.model.ImpositionSettings
+import io.github.abhishekcs194.printdeck.core.model.PaperSize
 import io.github.abhishekcs194.printdeck.data.LoadedDocument
 import io.github.abhishekcs194.printdeck.pdf.engine.ImpositionEngine
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfPreviewRenderer
@@ -42,6 +43,10 @@ class LayoutEditorViewModel @Inject constructor(
          */
         val previews: Map<Int, Bitmap> = emptyMap(),
         val rendering: Boolean = false,
+        /** True while the full document is being imposed for printing. */
+        val preparingPrint: Boolean = false,
+        /** Set once a job is ready to hand to the print dialog; consumed by the UI. */
+        val printJob: PrintJob? = null,
         val error: String? = null,
     ) {
         val sheetCount: Int get() = plan?.sheetCount ?: 0
@@ -58,6 +63,15 @@ class LayoutEditorViewModel @Inject constructor(
 
         private fun Int.plural(noun: String) = if (this == 1) "1 $noun" else "$this ${noun}s"
     }
+
+    /** A finished job, waiting to be handed to the platform print dialog. */
+    data class PrintJob(
+        val file: File,
+        val name: String,
+        val sheetCount: Int,
+        val paper: PaperSize,
+        val landscape: Boolean,
+    )
 
     private val _state = MutableStateFlow(UiState())
     val state: StateFlow<UiState> = _state.asStateFlow()
@@ -86,6 +100,55 @@ class LayoutEditorViewModel @Inject constructor(
     }
 
     fun dismissError() = _state.update { it.copy(error = null) }
+
+    /**
+     * Imposes the whole document, ready for printing.
+     *
+     * The preview only ever imposes the sheet on screen, which is what keeps it
+     * responsive — but that file is one page long and is not the job. Printing
+     * needs every sheet, so the full plan is executed here, once, when the user
+     * actually commits to it.
+     */
+    fun preparePrint() {
+        val snapshot = _state.value
+        val document = snapshot.document ?: return
+        val plan = snapshot.plan ?: return
+        if (plan.sheets.isEmpty() || snapshot.preparingPrint) return
+
+        viewModelScope.launch {
+            _state.update { it.copy(preparingPrint = true, error = null) }
+            runCatching {
+                val target = File(context.cacheDir, "print-job.pdf")
+                engine.impose(document.file, plan, target)
+            }
+                .onSuccess { file ->
+                    _state.update {
+                        it.copy(
+                            preparingPrint = false,
+                            printJob = PrintJob(
+                                file = file,
+                                name = document.displayName,
+                                sheetCount = plan.sheetCount,
+                                paper = it.settings.sheet,
+                                landscape = plan.sheetSize.isLandscape,
+                            ),
+                        )
+                    }
+                }
+                .onFailure { failure ->
+                    if (failure is kotlinx.coroutines.CancellationException) throw failure
+                    _state.update {
+                        it.copy(
+                            preparingPrint = false,
+                            error = failure.message ?: "Could not prepare the document for printing.",
+                        )
+                    }
+                }
+        }
+    }
+
+    /** Clears the one-shot signal once the print dialog has been opened. */
+    fun consumePrintJob() = _state.update { it.copy(printJob = null) }
 
     /**
      * Recomputes the plan, then the preview.
