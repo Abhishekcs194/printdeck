@@ -92,7 +92,8 @@ fun <T> SegmentedTabs(
 @Composable
 fun <T> ChoiceChips(
     options: List<T>,
-    selected: T,
+    /** Null when nothing is chosen — a real state, not a placeholder for the first option. */
+    selected: T?,
     onSelect: (T) -> Unit,
     label: (T) -> String,
     modifier: Modifier = Modifier,

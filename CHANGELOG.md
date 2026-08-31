@@ -136,6 +136,11 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- Paper type showed a selection that was never sent. The chip fell back to the
+  printer's first entry for display while the job carried no paper type at all.
+- Paper types are named as people name paper — "Plain paper" rather than IPP's
+  "stationery", and Canon's keywords as they appear on the packet rather than
+  mechanically trimmed to "Semisuper". Plain paper sorts first and is the default.
 - Choosing a printer returned to a screen still saying no printer was chosen. The
   print screen sampled the selection once at construction, but it stays on the
   back stack while the picker is used, so it never saw the choice.

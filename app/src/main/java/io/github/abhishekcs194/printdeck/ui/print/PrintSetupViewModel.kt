@@ -109,7 +109,12 @@ class PrintSetupViewModel @Inject constructor(
                 ?: IppPrintOptions.COLOR_MODE_MONOCHROME,
             quality = quality.takeIf { it in capabilities.printQualities }
                 ?: IppPrintOptions.QUALITY_NORMAL,
-            mediaType = mediaType?.takeIf { it in capabilities.mediaTypes },
+            // Plain paper unless the user says otherwise. Leaving this unset
+            // let the printer choose, which on a photo-capable machine can mean
+            // laying down photo-density ink on copier paper.
+            mediaType = mediaType?.takeIf { it in capabilities.mediaTypes }
+                ?: capabilities.mediaTypes.firstOrNull { it == PLAIN_PAPER }
+                ?: capabilities.mediaTypes.firstOrNull { it == MEDIA_AUTO },
         )
 
     fun updateOptions(transform: (IppPrintOptions) -> IppPrintOptions) =
@@ -184,6 +189,10 @@ class PrintSetupViewModel @Inject constructor(
     }
 
     private companion object {
+        /** The IPP keyword for ordinary copier paper. */
+        const val PLAIN_PAPER = "stationery"
+        const val MEDIA_AUTO = "auto"
+
         const val POLL_INTERVAL_MS = 1_500L
 
         /** About a minute of following the job before leaving it to the printer. */

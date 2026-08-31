@@ -308,8 +308,14 @@ private fun PrintOptions(
                 modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.sm),
             )
             ChoiceChips(
-                options = capabilities.mediaTypes,
-                selected = options.mediaType ?: capabilities.mediaTypes.first(),
+                // Everyday paper first. A printer lists its exotic photo stock
+                // in whatever order it likes, and the one people actually use
+                // was ending up off the end of a scrolling row.
+                options = capabilities.mediaTypes.sortedBy { it.mediaRank() },
+                // Shows exactly what will be sent. Falling back to the first
+                // entry for display meant the chip claimed "Platinum" while the
+                // job carried no paper type at all.
+                selected = options.mediaType,
                 onSelect = { type -> viewModel.updateOptions { it.copy(mediaType = type) } },
                 label = { it.mediaLabel() },
             )
@@ -342,10 +348,53 @@ private fun String.sidesLabel(): String = when (this) {
     else -> this
 }
 
-/** Turns vendor keywords such as `com.canon.mtglossy` into something readable. */
-private fun String.mediaLabel(): String = substringAfterLast('.')
-    .removePrefix("mt")
-    .replaceFirstChar(Char::uppercase)
+/**
+ * What people call the paper, keyed by what IPP calls it.
+ *
+ * The standard vocabulary is not the everyday one — plain copier paper is
+ * "stationery" in IPP, which nobody would recognise as the thing in their tray.
+ * Vendor keywords are worse: mechanically trimming `com.canon.mtsemisuper`
+ * yields "Semisuper", which is not a kind of paper at all.
+ */
+private val MEDIA_LABELS = mapOf(
+    // PWG standard keywords.
+    "stationery" to "Plain paper",
+    "auto" to "Automatic",
+    "photographic" to "Photo paper",
+    "envelope" to "Envelope",
+    "labels" to "Labels",
+    "cardstock" to "Card",
+    "transparency" to "Transparency",
+    "stationery-letterhead" to "Letterhead",
+
+    // Canon's own, as they are named on the packet.
+    "com.canon.mtglossy" to "Glossy photo",
+    "com.canon.mtmat" to "Matte photo",
+    "com.canon.mtluster" to "Luster photo",
+    "com.canon.mtplatinum" to "Pro Platinum photo",
+    "com.canon.mtsemisuper" to "Semi-gloss photo",
+    "com.canon.mthires" to "High resolution",
+    "com.canon.mtgreeting" to "Greeting card",
+)
+
+/**
+ * Unrecognised keywords keep their trimmed form rather than being given an
+ * invented name, so an unfamiliar printer shows something traceable instead of
+ * something confidently wrong.
+ */
+private fun String.mediaLabel(): String = MEDIA_LABELS[this]
+    ?: substringAfterLast('.').removePrefix("mt").replaceFirstChar(Char::uppercase)
+
+/**
+ * Everyday paper first.
+ *
+ * A printer lists its speciality photo stock in whatever order it likes, and the
+ * one people actually use was ending up off the end of a scrolling row.
+ */
+private val MEDIA_ORDER = listOf("stationery", "auto", "stationery-letterhead", "photographic")
+
+private fun String.mediaRank(): Int =
+    MEDIA_ORDER.indexOf(this).takeIf { it >= 0 } ?: MEDIA_ORDER.size
 
 private val SPINNER = 20.dp
 private const val COPY_LIMIT = 99
