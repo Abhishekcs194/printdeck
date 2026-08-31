@@ -136,6 +136,11 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- Choosing a printer returned to a screen still saying no printer was chosen. The
+  print screen sampled the selection once at construction, but it stays on the
+  back stack while the picker is used, so it never saw the choice.
+- Options carried over from a previous printer are dropped if the new one does
+  not support them, rather than being sent and risking a rejected job.
 - Jobs now tell the printer not to rescale them (`print-scaling: none`). Printers
   default to `auto` and are otherwise free to resize a sheet whose page positions
   were computed to the millimetre.

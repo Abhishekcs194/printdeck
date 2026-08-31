@@ -10,6 +10,7 @@ import io.github.abhishekcs194.printdeck.data.SelectedPrinter
 import io.github.abhishekcs194.printdeck.print.ipp.IppJob
 import io.github.abhishekcs194.printdeck.print.ipp.IppPrintOptions
 import io.github.abhishekcs194.printdeck.print.ipp.IppPrinter
+import io.github.abhishekcs194.printdeck.print.ipp.PrinterCapabilities
 import io.github.abhishekcs194.printdeck.print.system.PrintJobSpec
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -47,11 +48,9 @@ class PrintSetupViewModel @Inject constructor(
 
     init {
         val spec = pendingJob.spec
-        val printer = selectedPrinter.current.value
         _state.update {
             it.copy(
                 spec = spec,
-                printer = printer,
                 // The ink already chosen in the editor carries through, rather
                 // than resetting to a default the user has to set twice.
                 options = it.options.copy(
@@ -67,7 +66,51 @@ class PrintSetupViewModel @Inject constructor(
                 ),
             )
         }
+        observeSelectedPrinter()
     }
+
+    /**
+     * Follows the selection rather than sampling it once.
+     *
+     * This screen stays on the back stack while the user picks a printer, so its
+     * view model - and the state it holds - outlives the trip. Reading the
+     * selection once at construction meant returning with a printer chosen and a
+     * screen still insisting none was, which sent the user straight back to the
+     * picker they had just used.
+     */
+    private fun observeSelectedPrinter() {
+        viewModelScope.launch {
+            selectedPrinter.current.collect { chosen ->
+                _state.update { current ->
+                    current.copy(
+                        printer = chosen,
+                        options = chosen?.let { current.options.supportedBy(it.capabilities) }
+                            ?: current.options,
+                    )
+                }
+            }
+        }
+    }
+
+    /**
+     * Drops any option this printer does not offer.
+     *
+     * Options are carried over from the editor and from a previously chosen
+     * printer, and nothing guarantees the new one supports them. Sending a
+     * keyword a printer does not recognise risks it rejecting the whole job.
+     */
+    private fun IppPrintOptions.supportedBy(capabilities: PrinterCapabilities): IppPrintOptions =
+        copy(
+            sides = sides.takeIf { it in capabilities.sides }
+                ?: capabilities.sides.firstOrNull()
+                ?: IppPrintOptions.SIDES_ONE_SIDED,
+            colorMode = colorMode.takeIf { it in capabilities.colorModes }
+                ?: capabilities.colorModes.firstOrNull()
+                ?: IppPrintOptions.COLOR_MODE_MONOCHROME,
+            quality = quality.takeIf { it in capabilities.printQualities }
+                ?: IppPrintOptions.QUALITY_NORMAL,
+            mediaType = mediaType?.takeIf { it in capabilities.mediaTypes },
+        )
 
     fun updateOptions(transform: (IppPrintOptions) -> IppPrintOptions) =
         _state.update { it.copy(options = transform(it.options)) }
