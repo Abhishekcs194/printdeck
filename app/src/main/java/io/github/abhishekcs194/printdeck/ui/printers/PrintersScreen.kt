@@ -121,29 +121,27 @@ fun PrintersScreen(
                     if (index > 0) HorizontalDivider(thickness = 1.dp, color = colors.border)
                     PrinterRow(
                         printer = printer,
-                        // Only a confirmed printer can be chosen; a lead that has
-                        // not answered as a printer cannot be printed to.
+                        // Only a confirmed printer can be chosen; one that has not
+                        // answered as a printer cannot be printed to over IPP.
                         onSelect = if (printer.confirmed) {
                             { viewModel.select(printer); onPrinterChosen() }
                         } else {
                             null
                         },
+                        onRetry = { viewModel.retry(printer) },
                     )
                 }
             }
         }
 
-        // Only explain a failure once the search has actually finished; saying
-        // "nothing found" while still looking would be wrong and alarming.
-        if (!state.searching && state.printers.isEmpty()) {
-            state.diagnosis?.let { diagnosis ->
-                Notice(
-                    title = diagnosis.headline,
-                    body = diagnosis.explanation,
-                    bullets = diagnosis.suggestions,
-                    icon = PrintDeckIcons.Warning,
-                )
-            }
+        // Only ever shown when there is genuinely nothing on screen to act on.
+        state.diagnosisToShow?.let { diagnosis ->
+            Notice(
+                title = diagnosis.headline,
+                body = diagnosis.explanation,
+                bullets = diagnosis.suggestions,
+                icon = PrintDeckIcons.Warning,
+            )
         }
 
         Section(
@@ -176,6 +174,7 @@ fun PrintersScreen(
 private fun PrinterRow(
     printer: PrintersViewModel.FoundPrinter,
     onSelect: (() -> Unit)?,
+    onRetry: () -> Unit,
 ) {
     val colors = PrintDeckTheme.colors
     val capabilities = printer.capabilities
@@ -228,15 +227,35 @@ private fun PrinterRow(
                 )
             }
 
-            if (capabilities == null) {
-                Text(
+            when {
+                printer.identifying -> Text(
                     text = "Checking…",
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.mutedForeground,
                 )
-            } else {
-                Supplies(capabilities)
-                Capabilities(capabilities)
+
+                // Found, but it would not say what it is. Still shown, because
+                // something is listening and the system dialog may well reach it.
+                capabilities == null -> Column(
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    Text(
+                        text = printer.problem ?: "It did not answer as a printer.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.warning,
+                    )
+                    PrintDeckButton(
+                        text = "Try again",
+                        variant = ButtonVariant.Outline,
+                        size = ButtonSize.Small,
+                        onClick = onRetry,
+                    )
+                }
+
+                else -> {
+                    Supplies(capabilities)
+                    Capabilities(capabilities)
+                }
             }
         }
     }

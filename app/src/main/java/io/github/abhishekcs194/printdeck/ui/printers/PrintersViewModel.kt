@@ -29,10 +29,20 @@ class PrintersViewModel @Inject constructor(
     private val selectedPrinter: SelectedPrinter,
 ) : ViewModel() {
 
-    /** A discovered printer, once it has confirmed what it is. */
+    /**
+     * Something discovery turned up, at whatever stage of being identified.
+     *
+     * A device that answered on a printer port but not to IPP is kept rather
+     * than discarded. It is still real, the user can often still print to it
+     * through the system dialog, and above all removing it silently leaves the
+     * screen claiming a printer was found while showing nothing to select.
+     */
     data class FoundPrinter(
         val endpoint: PrinterEndpoint,
-        val capabilities: PrinterCapabilities?,
+        val capabilities: PrinterCapabilities? = null,
+        val identifying: Boolean = true,
+        /** Why identification failed, when it did. */
+        val problem: String? = null,
     ) {
         val title: String
             get() = capabilities?.makeAndModel ?: endpoint.displayName
@@ -49,6 +59,18 @@ class PrintersViewModel @Inject constructor(
         val diagnosis: DiscoveryDiagnosis? = null,
         val manualEntryError: String? = null,
     ) {
+        /**
+         * Shown only when there is genuinely nothing on screen to act on.
+         *
+         * The diagnosis is computed from what discovery turned up, while the list
+         * shows what survived identification, so the two can disagree. Explaining
+         * a failure above a populated list, or announcing a find above an empty
+         * one, is worse than saying nothing.
+         */
+        val diagnosisToShow: DiscoveryDiagnosis?
+            get() = diagnosis
+                ?.takeIf { !searching && printers.isEmpty() }
+                ?.takeIf { it !is DiscoveryDiagnosis.Found }
         /** Progress text. Naming the ring explains why a search is still going. */
         val progressLabel: String
             get() = when (phase) {
@@ -111,12 +133,28 @@ class PrintersViewModel @Inject constructor(
         _state.update { it.copy(printers = it.printers + FoundPrinter(endpoint, null)) }
 
         viewModelScope.launch {
-            val capabilities = ippClient.query(endpoint).getOrNull()
+            val result = ippClient.query(endpoint)
+            val capabilities = result.getOrNull()
+
             if (capabilities == null) {
-                // Not a printer after all; quietly drop it rather than listing
-                // something the user cannot print to.
+                // Kept, not dropped. It answered on a printer port, so something
+                // is there; the user can still reach it through the system
+                // dialog, and hiding it would leave the screen contradicting
+                // itself about what was found.
                 _state.update { current ->
-                    current.copy(printers = current.printers.filterNot { it.endpoint.key == endpoint.key })
+                    current.copy(
+                        printers = current.printers.map {
+                            if (it.endpoint.key == endpoint.key) {
+                                it.copy(
+                                    identifying = false,
+                                    problem = result.exceptionOrNull()?.message
+                                        ?: "It did not answer as a printer.",
+                                )
+                            } else {
+                                it
+                            }
+                        },
+                    )
                 }
                 return@launch
             }
@@ -129,7 +167,11 @@ class PrintersViewModel @Inject constructor(
             _state.update { current ->
                 current.copy(
                     printers = current.printers.map {
-                        if (it.endpoint.key == endpoint.key) FoundPrinter(confirmed, capabilities) else it
+                        if (it.endpoint.key == endpoint.key) {
+                            FoundPrinter(confirmed, capabilities, identifying = false)
+                        } else {
+                            it
+                        }
                     },
                 )
             }
@@ -153,6 +195,14 @@ class PrintersViewModel @Inject constructor(
     }
 
     fun dismissManualEntryError() = _state.update { it.copy(manualEntryError = null) }
+
+    /** Tries again to identify a device that did not answer the first time. */
+    fun retry(printer: FoundPrinter) {
+        _state.update { current ->
+            current.copy(printers = current.printers.filterNot { it.endpoint.key == printer.endpoint.key })
+        }
+        identify(printer.endpoint)
+    }
 
     /** Chooses a printer for printing. Only confirmed printers can be selected. */
     fun select(printer: FoundPrinter) {

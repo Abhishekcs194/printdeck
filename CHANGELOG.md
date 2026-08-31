@@ -136,6 +136,11 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- The printers screen could report "1 printer found" above an empty list. A device
+  that answered on a printer port but not to IPP was removed from the list while
+  still being counted by the diagnosis. Such devices are now shown, with the
+  reason and a retry, and the diagnosis only speaks when there is genuinely
+  nothing on screen to act on.
 - A network sweep never completed, so the printer search ran forever and never
   reported what it had found. The flow was held open by an `awaitClose` that had
   nothing to wait for.
