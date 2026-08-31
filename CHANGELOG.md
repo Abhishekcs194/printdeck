@@ -136,6 +136,14 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- A remembered printer was reported as found without ever being contacted. The
+  check probed its subnet's gateway rather than the printer, and a router answers
+  on its own subnet from neighbouring networks — so a phone that had changed
+  network listed a printer it could not reach, and skipped the wider search that
+  would have found it properly.
+- Discovery now restarts when the device changes network, and clears results
+  found somewhere else. Switching between the bands of one router is enough to
+  change subnet, because those are separate access points.
 - The printers screen could report "1 printer found" above an empty list. A device
   that answered on a printer port but not to IPP was removed from the list while
   still being counted by the diagnosis. Such devices are now shown, with the

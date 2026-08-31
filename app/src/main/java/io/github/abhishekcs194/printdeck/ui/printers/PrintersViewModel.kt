@@ -10,6 +10,7 @@ import io.github.abhishekcs194.printdeck.print.ipp.IppClient
 import io.github.abhishekcs194.printdeck.print.ipp.PrinterCapabilities
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.DiscoverySource
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.DiscoveryDiagnosis
+import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkChanges
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.PrinterDiscovery
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.PrinterEndpoint
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.PrivateAddressGuard
@@ -27,6 +28,7 @@ class PrintersViewModel @Inject constructor(
     private val ippClient: IppClient,
     private val knownPrinters: KnownPrintersStore,
     private val selectedPrinter: SelectedPrinter,
+    private val networkChanges: NetworkChanges,
 ) : ViewModel() {
 
     /**
@@ -89,6 +91,26 @@ class PrintersViewModel @Inject constructor(
 
     init {
         search()
+        observeNetworkChanges()
+    }
+
+    /**
+     * Starts again when the device moves network.
+     *
+     * A printer found on one network is not reachable from another, and the app
+     * has no way to tell which of its results still hold. Keeping them would
+     * show a printer that cannot be printed to - which is exactly what happened
+     * when switching between the bands of one router, since those are separate
+     * access points and can hand out separate subnets.
+     */
+    private fun observeNetworkChanges() {
+        viewModelScope.launch {
+            networkChanges.changes().collect {
+                selectedPrinter.clear()
+                _state.update { it.copy(printers = emptyList(), diagnosis = null) }
+                search()
+            }
+        }
     }
 
     fun search() {

@@ -18,9 +18,9 @@ import java.net.Inet4Address
  * other side of a router, however long it listens. That is not a bug to be
  * tuned around; it is why [NetworkScanner] exists alongside it.
  */
-class MdnsDiscovery(private val context: Context) {
+class MdnsDiscovery(private val context: Context) : Announcements {
 
-    fun discover(): Flow<PrinterEndpoint> = callbackFlow {
+    override fun discover(): Flow<PrinterEndpoint> = callbackFlow {
         val nsd = context.getSystemService<NsdManager>()
         if (nsd == null) {
             close()

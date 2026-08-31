@@ -16,10 +16,10 @@ import java.net.NetworkInterface
  * routing table, and therefore the gateways, which [NetworkInterface] cannot
  * see.
  */
-class NetworkTopology(private val context: Context) {
+class NetworkTopology(private val context: Context) : Topology {
 
     /** Every IPv4 address this device holds, with its lease's prefix length. */
-    fun localAddresses(): List<CandidateSubnetPlanner.LocalAddress> =
+    override fun localAddresses(): List<CandidateSubnetPlanner.LocalAddress> =
         runCatching {
             NetworkInterface.getNetworkInterfaces()
                 ?.asSequence()
@@ -68,8 +68,8 @@ class NetworkTopology(private val context: Context) {
         return (fromRoutes + conventional).distinct()
     }
 
-    fun observations(
-        rememberedSubnets: List<Ipv4Subnet> = emptyList(),
+    override fun observations(
+        rememberedSubnets: List<Ipv4Subnet>,
     ): CandidateSubnetPlanner.Observations = CandidateSubnetPlanner.Observations(
         localAddresses = localAddresses(),
         gateways = gateways(),

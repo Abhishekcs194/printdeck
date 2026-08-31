@@ -35,7 +35,7 @@ class NetworkScanner(
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val connectTimeoutMs: Int = DEFAULT_CONNECT_TIMEOUT_MS,
     private val concurrency: Int = DEFAULT_CONCURRENCY,
-) {
+) : NetworkProbe {
 
     /**
      * Is anything routing for this network?
@@ -45,7 +45,7 @@ class NetworkScanner(
      * because the default gateway forwards on its behalf — which is exactly the
      * case that makes a printer on another subnet reachable but invisible.
      */
-    suspend fun subnetExists(subnet: Ipv4Subnet): Boolean = withContext(dispatcher) {
+    override suspend fun subnetExists(subnet: Ipv4Subnet): Boolean = withContext(dispatcher) {
         if (!PrivateAddressGuard.isScannable(subnet)) return@withContext false
 
         val base = subnet.networkAddress
@@ -64,9 +64,9 @@ class NetworkScanner(
      * Results are unconfirmed leads: routers and NAS boxes hold 631 and 515 open
      * more often than you would expect. Confirmation is a separate step.
      */
-    fun sweep(
+    override fun sweep(
         subnets: List<Ipv4Subnet>,
-        ports: List<PrinterPort> = PrinterPort.sweepOrder,
+        ports: List<PrinterPort>,
     ): Flow<PrinterEndpoint> = channelFlow {
         val gate = Semaphore(concurrency)
 
@@ -99,6 +99,10 @@ class NetworkScanner(
         // end - which is a search that runs indefinitely rather than reporting
         // what it found.
     }.flowOn(dispatcher)
+
+    /** Can this exact address and port be reached right now? */
+    override suspend fun canReach(address: String, port: Int): Boolean =
+        withContext(dispatcher) { canConnect(address, port) }
 
     /**
      * A plain TCP connect. Deliberately not [java.net.InetAddress.isReachable],

@@ -1,0 +1,148 @@
+package io.github.abhishekcs194.printdeck.print.ipp.discovery
+
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.runBlocking
+import org.junit.Test
+
+/**
+ * Tests for the ring logic itself, with the network faked out.
+ *
+ * This is where the bugs have actually been. The address arithmetic was tested
+ * exhaustively from the start and has never been wrong; the orchestration around
+ * it shipped a sweep that never terminated, and a remembered printer reported as
+ * found without ever being contacted. Neither was reachable by testing pure
+ * functions, which is why these exist.
+ */
+class PrinterDiscoveryTest {
+
+    /** Records what was asked of the network, and answers from a fixed script. */
+    private class FakeProbe(
+        val reachable: Set<String> = emptySet(),
+        val existingSubnets: Set<String> = emptySet(),
+        val sweepResults: Map<String, List<PrinterEndpoint>> = emptyMap(),
+    ) : NetworkProbe {
+        val reachChecks = mutableListOf<String>()
+        val subnetsSwept = mutableListOf<String>()
+
+        override suspend fun subnetExists(subnet: Ipv4Subnet): Boolean =
+            subnet.asCidr() in existingSubnets
+
+        override suspend fun canReach(address: String, port: Int): Boolean {
+            reachChecks += "$address:$port"
+            return "$address:$port" in reachable
+        }
+
+        override fun sweep(subnets: List<Ipv4Subnet>, ports: List<PrinterPort>): Flow<PrinterEndpoint> {
+            subnets.forEach { subnetsSwept += it.asCidr() }
+            return flowOf(*subnets.flatMap { sweepResults[it.asCidr()].orEmpty() }.toTypedArray())
+        }
+    }
+
+    private object NoAnnouncements : Announcements {
+        override fun discover(): Flow<PrinterEndpoint> = emptyFlow()
+    }
+
+    private class FakeTopology(private val address: String) : Topology {
+        override fun localAddresses() =
+            listOf(CandidateSubnetPlanner.LocalAddress(address, PREFIX))
+
+        override fun observations(rememberedSubnets: List<Ipv4Subnet>) =
+            CandidateSubnetPlanner.Observations(
+                localAddresses = localAddresses(),
+                gateways = emptyList(),
+                rememberedSubnets = rememberedSubnets,
+            )
+    }
+
+    private fun endpoint(address: String) = PrinterEndpoint(address, IPP_PORT, DiscoverySource.SCAN)
+
+    private fun discover(
+        probe: FakeProbe,
+        localAddress: String,
+        remembered: List<PrinterEndpoint> = emptyList(),
+    ) = runBlocking {
+        PrinterDiscovery(NoAnnouncements, probe, FakeTopology(localAddress))
+            .discover(remembered = remembered)
+            .toList()
+    }
+
+    @Test
+    fun `a remembered printer is contacted, not assumed from its subnet`() {
+        // The bug this replaces: the subnet's gateway was probed instead of the
+        // printer. A router answers on its own subnet from neighbouring networks
+        // too, so a phone that had moved recorded a printer it could not reach.
+        val probe = FakeProbe(
+            reachable = emptySet(), // the printer is NOT reachable from here
+            existingSubnets = setOf("192.168.101.0/24"), // but its gateway answers
+        )
+        discover(probe, localAddress = "192.168.100.50", remembered = listOf(endpoint("192.168.101.16")))
+
+        assertThat(probe.reachChecks).contains("192.168.101.16:631")
+    }
+
+    @Test
+    fun `an unreachable remembered printer is not reported as found`() {
+        val probe = FakeProbe(existingSubnets = setOf("192.168.101.0/24"))
+        val progress = discover(
+            probe,
+            localAddress = "192.168.100.50",
+            remembered = listOf(endpoint("192.168.101.16")),
+        )
+        assertThat(progress.last().printers).isEmpty()
+    }
+
+    @Test
+    fun `an unreachable remembered printer does not suppress the wider search`() {
+        // The compounding half of the bug: something had been "found", so the
+        // search stopped before looking anywhere the printer might have moved to.
+        val probe = FakeProbe(existingSubnets = setOf("192.168.101.0/24"))
+        discover(probe, localAddress = "192.168.100.50", remembered = listOf(endpoint("192.168.101.16")))
+
+        assertThat(probe.subnetsSwept).contains("192.168.101.0/24")
+    }
+
+    @Test
+    fun `a reachable remembered printer is reported without a wider search`() {
+        val probe = FakeProbe(reachable = setOf("192.168.101.16:631"))
+        val progress = discover(
+            probe,
+            localAddress = "192.168.101.50",
+            remembered = listOf(endpoint("192.168.101.16")),
+        )
+
+        assertThat(progress.last().printers.map { it.address }).contains("192.168.101.16")
+        // Nothing beyond the attached network needed searching.
+        assertThat(probe.subnetsSwept).doesNotContain("192.168.0.0/24")
+    }
+
+    @Test
+    fun `a printer found by sweeping the attached network is reported`() {
+        val probe = FakeProbe(
+            sweepResults = mapOf("192.168.101.0/24" to listOf(endpoint("192.168.101.16"))),
+        )
+        val progress = discover(probe, localAddress = "192.168.101.50")
+
+        assertThat(progress.last().printers.map { it.address }).containsExactly("192.168.101.16")
+    }
+
+    @Test
+    fun `discovery always finishes`() {
+        val progress = discover(FakeProbe(), localAddress = "192.168.101.50")
+        assertThat(progress.last().phase).isEqualTo(PrinterDiscovery.Phase.FINISHED)
+    }
+
+    @Test
+    fun `finishing with nothing found carries a diagnosis`() {
+        val progress = discover(FakeProbe(), localAddress = "192.168.101.50")
+        assertThat(progress.last().diagnosis).isNotNull()
+    }
+
+    private companion object {
+        const val IPP_PORT = 631
+        const val PREFIX = 24
+    }
+}

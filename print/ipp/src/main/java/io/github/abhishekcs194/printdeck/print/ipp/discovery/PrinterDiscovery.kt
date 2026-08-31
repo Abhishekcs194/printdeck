@@ -31,9 +31,9 @@ import kotlinx.coroutines.withTimeoutOrNull
  * remembered and searched first, so the expensive path is paid once.
  */
 class PrinterDiscovery(
-    private val mdns: MdnsDiscovery,
-    private val scanner: NetworkScanner,
-    private val topology: NetworkTopology,
+    private val mdns: Announcements,
+    private val scanner: NetworkProbe,
+    private val topology: Topology,
 ) {
 
     enum class Phase {
@@ -112,7 +112,15 @@ class PrinterDiscovery(
         // --- Ring 1: addresses that worked before -----------------------------
         publish(Phase.CHECKING_KNOWN)
         remembered.forEach { printer ->
-            if (scanner.subnetExists(Ipv4Subnet.containing(parseIpv4(printer.address), SWEEP_PREFIX))) {
+            // The printer itself is contacted, not merely its network.
+            //
+            // Checking whether the subnet exists was wrong, and wrong in a way
+            // that hid itself: a router answers on its own subnet from
+            // neighbouring networks too, so a phone that had moved would record
+            // a printer it could not reach, report it as found, and - because
+            // something had been "found" - skip the wider search that would
+            // have located it properly.
+            if (scanner.canReach(printer.address, printer.port)) {
                 record(printer.copy(source = DiscoverySource.REMEMBERED))
             }
         }
