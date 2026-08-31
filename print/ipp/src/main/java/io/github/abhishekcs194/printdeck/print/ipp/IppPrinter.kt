@@ -131,27 +131,21 @@ class IppPrinter(
         val target = File(workingDirectory, "job-${System.nanoTime()}.pwg")
         val colorSpace = if (options.isMonochrome) ColorSpace.Grayscale else ColorSpace.Rgb
 
-        PdfRasterDocument.open(pdf, options.rasterDpi).use { document ->
+        // A landscape sheet is turned as it rasterises, so what reaches the
+        // printer is already the right way round for the paper.
+        PdfRasterDocument.open(
+            file = pdf,
+            dpi = options.rasterDpi,
+            quarterTurn = options.sheetIsLandscape,
+        ).use { document ->
             val output = OutputSettings(
                 colorSpace = colorSpace,
                 sides = options.sides,
                 copies = options.copies,
             )
 
-            // Paper feeds one way round, and the media keyword names a portrait
-            // sheet. A landscape imposition has to be turned to match it - the
-            // rotation a desktop print driver performs and the user never sees.
-            // Without it the printer shrinks the whole sheet to fit its short
-            // edge, leaving a white band top and bottom and wasting most of the
-            // page the imposition was arranged to fill.
-            val oriented = if (options.sheetIsLandscape) {
-                document.mapPages { pages -> pages.map { it.rotated() } }
-            } else {
-                document
-            }
-
             target.outputStream().buffered().use { stream ->
-                PwgWriter(stream, PwgSettings(output)).write(oriented)
+                PwgWriter(stream, PwgSettings(output)).write(document)
             }
         }
         return target

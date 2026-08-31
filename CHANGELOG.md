@@ -136,6 +136,13 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- A landscape two-up job printed shrunk into the top half of an upright sheet.
+  The earlier attempt at this used jipp-pdl's `RenderablePage.rotated()`, which
+  is a *half* turn for the reverse of a duplex sheet and leaves page dimensions
+  unchanged — it was shipped and changed nothing. The quarter turn now happens
+  during rasterisation, where it folds into the transform the page is already
+  drawn through, and seven tests check the page fills the turned raster corner to
+  corner rather than merely fitting inside it.
 - Paper type showed a selection that was never sent. The chip fell back to the
   printer's first entry for display while the job carried no paper type at all.
 - Paper types are named as people name paper — "Plain paper" rather than IPP's

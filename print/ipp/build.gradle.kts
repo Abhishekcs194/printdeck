@@ -29,5 +29,12 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
+    // Rasterising uses the platform PdfRenderer, so its geometry can only be
+    // checked with an Android runtime.
+    testImplementation(libs.robolectric)
+    // Only to author test fixtures: Robolectric's PdfDocument shadow cannot
+    // create a PDF, and these tests need a real one to rasterise.
+    testImplementation(libs.pdfbox.android)
+    testImplementation(libs.androidx.test.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

@@ -2,7 +2,6 @@ package io.github.abhishekcs194.printdeck.print.ipp.raster
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import com.hp.jipp.pdl.ColorSpace
@@ -29,6 +28,26 @@ class PdfRasterDocument private constructor(
     private val descriptor: ParcelFileDescriptor,
     private val renderer: PdfRenderer,
     override val dpi: Int,
+    /**
+     * Turn each page a quarter turn as it is rasterised.
+     *
+     * Needed because media keywords name a portrait sheet — `iso_a4_210x297mm`
+     * is 210 wide by 297 tall and has no landscape variant. A landscape
+     * imposition sent against it leaves the printer with an image wider than the
+     * paper, which it resolves by shrinking the whole sheet to fit, so a two-up
+     * job arrives squashed into the top half of an upright page.
+     *
+     * Done here rather than on the rendered raster because the rotation is free
+     * at this point: it folds into the transform the page is already drawn
+     * through. Rotating afterwards would mean transposing a bitmap the size of
+     * the page, which is precisely the allocation the swath-by-swath approach
+     * exists to avoid.
+     *
+     * jipp-pdl's own `RenderablePage.rotated()` does NOT do this — it is a half
+     * turn, for the reverse side of a duplex sheet, and leaves the page
+     * dimensions unchanged.
+     */
+    private val quarterTurn: Boolean,
 ) : RenderableDocument(), Closeable {
 
     // PdfRenderer permits exactly one open page at a time, so the currently open
@@ -41,9 +60,12 @@ class PdfRasterDocument private constructor(
 
     private fun pageAt(index: Int): RenderablePage {
         val page = openPage(index)
-        val scale = dpi.toFloat() / POINTS_PER_INCH
-        val widthPixels = (page.width * scale).toInt().coerceAtLeast(1)
-        val heightPixels = (page.height * scale).toInt().coerceAtLeast(1)
+        val (widthPixels, heightPixels) = RasterGeometry.pixelSize(
+            pageWidthPoints = page.width.toFloat(),
+            pageHeightPoints = page.height.toFloat(),
+            dpi = dpi,
+            quarterTurn = quarterTurn,
+        )
 
         return object : RenderablePage(widthPixels, heightPixels) {
             override fun render(
@@ -52,7 +74,7 @@ class PdfRasterDocument private constructor(
                 colorSpace: ColorSpace,
                 byteArray: ByteArray,
             ) {
-                renderSwath(index, yOffset, swathHeight, widthPixels, scale, colorSpace, byteArray)
+                renderSwath(index, yOffset, swathHeight, colorSpace, byteArray)
             }
         }
     }
@@ -66,28 +88,37 @@ class PdfRasterDocument private constructor(
         }
     }
 
-    @Suppress("LongParameterList")
     private fun renderSwath(
         index: Int,
         yOffset: Int,
         swathHeight: Int,
-        widthPixels: Int,
-        scale: Float,
         colorSpace: ColorSpace,
         target: ByteArray,
     ) {
         val page = openPage(index)
+        val (widthPixels, _) = RasterGeometry.pixelSize(
+            pageWidthPoints = page.width.toFloat(),
+            pageHeightPoints = page.height.toFloat(),
+            dpi = dpi,
+            quarterTurn = quarterTurn,
+        )
         val bitmap = Bitmap.createBitmap(widthPixels, swathHeight, Bitmap.Config.ARGB_8888)
         try {
             // Paper is white. A PDF page has no background of its own, so without
             // this the untouched areas stay transparent and convert to black.
             bitmap.eraseColor(Color.WHITE)
 
-            val transform = Matrix().apply {
-                setScale(scale, scale)
-                postTranslate(0f, -yOffset.toFloat())
-            }
-            page.render(bitmap, null, transform, PdfRenderer.Page.RENDER_MODE_FOR_PRINT)
+            page.render(
+                bitmap,
+                null,
+                RasterGeometry.transform(
+                    pageHeightPoints = page.height.toFloat(),
+                    dpi = dpi,
+                    quarterTurn = quarterTurn,
+                    yOffset = yOffset,
+                ),
+                PdfRenderer.Page.RENDER_MODE_FOR_PRINT,
+            )
 
             bitmap.toRaster(colorSpace, target)
         } finally {
@@ -103,11 +134,9 @@ class PdfRasterDocument private constructor(
     }
 
     companion object {
-        private const val POINTS_PER_INCH = 72f
-
-        fun open(file: File, dpi: Int): PdfRasterDocument {
+        fun open(file: File, dpi: Int, quarterTurn: Boolean = false): PdfRasterDocument {
             val descriptor = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-            return PdfRasterDocument(descriptor, PdfRenderer(descriptor), dpi)
+            return PdfRasterDocument(descriptor, PdfRenderer(descriptor), dpi, quarterTurn)
         }
     }
 }
