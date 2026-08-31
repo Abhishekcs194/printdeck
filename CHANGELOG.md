@@ -135,6 +135,12 @@ versioning is [semver](https://semver.org/).
 - Android's print dialog is kept as an explicit fallback, since it reaches
   printers that do not speak IPP and offers Save as PDF.
 
+- The search now observes networks rather than only guessing at them. It asks the
+  router, over UPnP, which network it is itself on — turning "a network might
+  exist next door" into "this exact network does" — and treats the DNS servers
+  DHCP handed over as evidence of real segments. Guessed ranges remain, last, as
+  a fallback.
+
 ### Fixed
 - The search skipped networks it had good reason to believe in. Every candidate
   had to answer a router probe on ports 80/443/53 before being swept, so a router

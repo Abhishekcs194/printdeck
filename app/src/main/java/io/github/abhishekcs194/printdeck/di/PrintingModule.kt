@@ -16,6 +16,8 @@ import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkScanner
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.NetworkTopology
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.PrinterDiscovery
 import io.github.abhishekcs194.printdeck.print.ipp.discovery.Topology
+import io.github.abhishekcs194.printdeck.print.ipp.discovery.UpnpGateway
+import io.github.abhishekcs194.printdeck.print.ipp.discovery.UpstreamGateway
 import javax.inject.Singleton
 
 /** Finding printers, asking what they can do, and sending jobs to them. */
@@ -43,11 +45,16 @@ object PrintingModule {
 
     @Provides
     @Singleton
+    fun provideUpstreamGateway(): UpstreamGateway = UpnpGateway()
+
+    @Provides
+    @Singleton
     fun providePrinterDiscovery(
         announcements: Announcements,
         probe: NetworkProbe,
         topology: Topology,
-    ): PrinterDiscovery = PrinterDiscovery(announcements, probe, topology)
+        upstream: UpstreamGateway,
+    ): PrinterDiscovery = PrinterDiscovery(announcements, probe, topology, upstream)
 
     @Provides
     @Singleton

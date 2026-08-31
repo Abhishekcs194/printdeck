@@ -34,6 +34,7 @@ class PrinterDiscovery(
     private val mdns: Announcements,
     private val scanner: NetworkProbe,
     private val topology: Topology,
+    private val upstream: UpstreamGateway,
 ) {
 
     enum class Phase {
@@ -163,8 +164,17 @@ class PrinterDiscovery(
         // there is no evidence to explain the failure with, which would leave the
         // user staring at a bare "no printers found".
         if (found.isEmpty()) {
+            // Ask the router which network it is itself on, before resorting to
+            // guesses. A NAT router knows its upstream address and will say so,
+            // which turns "a network might exist next door" into "this exact
+            // network does".
+            val upstreamAddress = upstream.externalAddress()
+            val observed = topology.observations(allRememberedSubnets)
             val wider = CandidateSubnetPlanner.plan(
-                topology.observations(allRememberedSubnets),
+                observed.copy(
+                    observedAddresses = observed.observedAddresses +
+                        listOfNotNull(upstreamAddress?.takeIf(PrivateAddressGuard::isAllowed)),
+                ),
                 CandidateSubnetPlanner.Depth.WIDE,
             ).filterNot { candidate -> nearby.any { it.subnet == candidate.subnet } }
 

@@ -46,6 +46,11 @@ class PrinterDiscoveryTest {
         override fun discover(): Flow<PrinterEndpoint> = emptyFlow()
     }
 
+    /** A router that declines to say what is above it, which many do. */
+    private class FakeUpstream(private val address: String? = null) : UpstreamGateway {
+        override suspend fun externalAddress(): String? = address
+    }
+
     private class FakeTopology(private val address: String) : Topology {
         override fun localAddresses() =
             listOf(CandidateSubnetPlanner.LocalAddress(address, PREFIX))
@@ -68,8 +73,9 @@ class PrinterDiscoveryTest {
         probe: FakeProbe,
         localAddress: String,
         remembered: List<PrinterEndpoint> = emptyList(),
+        upstream: String? = null,
     ) = runBlocking {
-        PrinterDiscovery(NoAnnouncements, probe, FakeTopology(localAddress))
+        PrinterDiscovery(NoAnnouncements, probe, FakeTopology(localAddress), FakeUpstream(upstream))
             .discover(remembered = remembered)
             .toList()
     }
@@ -163,6 +169,33 @@ class PrinterDiscoveryTest {
         val progress = discover(probe, localAddress = "192.168.100.50")
 
         assertThat(progress.last().printers.map { it.address }).contains("192.168.101.16")
+    }
+
+    @Test
+    fun `the network the router names upstream is searched`() {
+        // Not a guess: the router was asked and answered. This is what replaces
+        // trying likely ranges in the hope that one of them exists.
+        val probe = FakeProbe(
+            sweepResults = mapOf("10.20.30.0/24" to listOf(endpoint("10.20.30.40"))),
+        )
+        val progress = discover(
+            probe,
+            localAddress = "192.168.1.50",
+            upstream = "10.20.30.1",
+        )
+
+        assertThat(probe.subnetsSwept).contains("10.20.30.0/24")
+        assertThat(progress.last().printers.map { it.address }).contains("10.20.30.40")
+    }
+
+    @Test
+    fun `a public upstream address is ignored`() {
+        // A router facing the internet reports a public address. Sweeping that
+        // would be scanning somebody else's network.
+        val probe = FakeProbe()
+        discover(probe, localAddress = "192.168.1.50", upstream = "81.2.69.142")
+
+        assertThat(probe.subnetsSwept.none { it.startsWith("81.") }).isTrue()
     }
 
     @Test

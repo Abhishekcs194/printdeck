@@ -74,7 +74,25 @@ class NetworkTopology(private val context: Context) : Topology {
         localAddresses = localAddresses(),
         gateways = gateways(),
         rememberedSubnets = rememberedSubnets,
+        observedAddresses = dnsServers(),
     )
+
+    /**
+     * DNS servers this device was handed by DHCP.
+     *
+     * Often the router itself, but on a network with any structure to it they
+     * can sit on a different segment entirely — and that segment is then a known
+     * fact rather than a guess.
+     */
+    private fun dnsServers(): List<String> = runCatching {
+        val connectivity = context.getSystemService<ConnectivityManager>()
+        connectivity?.getLinkProperties(connectivity.activeNetwork)
+            ?.dnsServers
+            ?.filterIsInstance<Inet4Address>()
+            ?.mapNotNull { it.hostAddress }
+            ?.filter(PrivateAddressGuard::isAllowed)
+            .orEmpty()
+    }.getOrDefault(emptyList())
 
     private companion object {
         const val MIN_ROUTER_PREFIX = 24

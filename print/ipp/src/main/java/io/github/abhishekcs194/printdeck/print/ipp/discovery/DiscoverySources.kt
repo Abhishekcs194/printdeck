@@ -15,3 +15,14 @@ interface Topology {
         rememberedSubnets: List<Ipv4Subnet> = emptyList(),
     ): CandidateSubnetPlanner.Observations
 }
+
+/**
+ * The network above this one, as the local router reports it.
+ *
+ * An observation rather than a guess: a router doing NAT knows its own address
+ * on the network above, and asking it names that network exactly instead of
+ * trying likely ranges and hoping.
+ */
+interface UpstreamGateway {
+    suspend fun externalAddress(): String?
+}

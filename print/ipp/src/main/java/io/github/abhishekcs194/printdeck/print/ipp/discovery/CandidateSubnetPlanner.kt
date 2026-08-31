@@ -44,6 +44,13 @@ object CandidateSubnetPlanner {
         val gateways: List<String> = emptyList(),
         /** Subnets where a printer was found before. Cheap and very likely to hit again. */
         val rememberedSubnets: List<Ipv4Subnet> = emptyList(),
+        /**
+         * Addresses this device has actually been told about — DNS servers from
+         * DHCP, the router's own upstream address — as opposed to ranges guessed
+         * at. A network something real lives on is worth far more than a network
+         * that merely might exist.
+         */
+        val observedAddresses: List<String> = emptyList(),
     )
 
     /**
@@ -140,13 +147,21 @@ object CandidateSubnetPlanner {
                     runCatching { Ipv4Subnet.containing(parseIpv4(gateway), MIN_SWEEPABLE_PREFIX) }
                         .getOrNull()?.let { add(it to Confidence.HIGH) }
                 }
-                // 4. Ranges adjacent to those routers. Still high confidence: a
+                // 4. Networks something real was observed on: a DNS server we
+                //    were handed, or the address the router says it holds
+                //    upstream. These are facts, not candidates.
+                observations.observedAddresses.forEach { address ->
+                    runCatching { Ipv4Subnet.containing(parseIpv4(address), MIN_SWEEPABLE_PREFIX) }
+                        .getOrNull()?.let { add(it to Confidence.HIGH) }
+                }
+
+                // 5. Ranges adjacent to those routers. Still high confidence: a
                 //    router at .101.1 is very often itself a client of .100.x,
                 //    and that neighbour is where a second network usually lives.
                 observations.gateways.forEach { gateway ->
                     neighboursOf(gateway).forEach { add(it to Confidence.HIGH) }
                 }
-                // 5. The standard consumer ranges. Guesses, and gated as such.
+                // 6. The standard consumer ranges. Guesses, and gated as such.
                 commonHomeSubnets.forEach { add(it to Confidence.SPECULATIVE) }
             }
         }
