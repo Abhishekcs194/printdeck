@@ -53,7 +53,11 @@ class PrinterDiscoveryTest {
         override fun observations(rememberedSubnets: List<Ipv4Subnet>) =
             CandidateSubnetPlanner.Observations(
                 localAddresses = localAddresses(),
-                gateways = emptyList(),
+                // Every device on a network has a default route; a fake that
+                // pretends otherwise tests a situation that does not occur.
+                gateways = listOf(formatIpv4(
+                    Ipv4Subnet.containing(parseIpv4(address), PREFIX).networkAddress + 1,
+                )),
                 rememberedSubnets = rememberedSubnets,
             )
     }
@@ -127,6 +131,38 @@ class PrinterDiscoveryTest {
         val progress = discover(probe, localAddress = "192.168.101.50")
 
         assertThat(progress.last().printers.map { it.address }).containsExactly("192.168.101.16")
+    }
+
+    @Test
+    fun `a remembered network is swept even when its router stays silent`() {
+        // The reported case: the phone moves to another band, the printer's
+        // network has no router answering a probe from here, and the sweep that
+        // would have found it was skipped. A network we have reason to believe
+        // in is now searched regardless.
+        val probe = FakeProbe(
+            existingSubnets = emptySet(), // nothing answers a router probe anywhere
+            sweepResults = mapOf("192.168.101.0/24" to listOf(endpoint("192.168.101.16"))),
+        )
+        val progress = discover(
+            probe,
+            localAddress = "192.168.100.50",
+            remembered = listOf(endpoint("192.168.101.16")),
+        )
+
+        assertThat(probe.subnetsSwept).contains("192.168.101.0/24")
+        assertThat(progress.last().printers.map { it.address }).contains("192.168.101.16")
+    }
+
+    @Test
+    fun `the network beside the router is searched without needing a reply`() {
+        // A phone on 192.168.100.x with a second network on 101.x: that
+        // neighbour is the single most likely place for the printer to be.
+        val probe = FakeProbe(
+            sweepResults = mapOf("192.168.101.0/24" to listOf(endpoint("192.168.101.16"))),
+        )
+        val progress = discover(probe, localAddress = "192.168.100.50")
+
+        assertThat(progress.last().printers.map { it.address }).contains("192.168.101.16")
     }
 
     @Test

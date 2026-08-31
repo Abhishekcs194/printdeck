@@ -69,6 +69,16 @@ class PrinterDiscovery(
         rememberedSubnets: List<Ipv4Subnet> = emptyList(),
         escalate: Boolean = true,
     ): Flow<Progress> = channelFlow {
+        // A remembered printer implies its network. Deriving that here rather
+        // than making the caller pass both removes a way for the two to disagree
+        // - and a subnet that goes missing is a subnet that never gets searched.
+        val impliedSubnets = remembered.mapNotNull { printer ->
+            runCatching {
+                Ipv4Subnet.containing(parseIpv4(printer.address), SWEEP_PREFIX)
+            }.getOrNull()
+        }
+        val allRememberedSubnets = (rememberedSubnets + impliedSubnets).distinct()
+
         val found = LinkedHashMap<String, PrinterEndpoint>()
 
         // Routers answering on networks this device is not part of. The one
@@ -128,7 +138,7 @@ class PrinterDiscovery(
 
         // --- Ring 2: announcements and attached networks, concurrently --------
         val nearby = CandidateSubnetPlanner.plan(
-            topology.observations(rememberedSubnets),
+            topology.observations(allRememberedSubnets),
             CandidateSubnetPlanner.Depth.LOCAL,
         )
 
@@ -140,8 +150,8 @@ class PrinterDiscovery(
             }
         }
 
-        nearby.forEachIndexed { index, subnet ->
-            scanner.sweep(listOf(subnet)).collectLatest { record(it) }
+        nearby.forEachIndexed { index, candidate ->
+            scanner.sweep(listOf(candidate.subnet)).collectLatest { record(it) }
             publish(Phase.SEARCHING_NEARBY, index + 1, nearby.size)
         }
         announcements.join()
@@ -154,37 +164,56 @@ class PrinterDiscovery(
         // user staring at a bare "no printers found".
         if (found.isEmpty()) {
             val wider = CandidateSubnetPlanner.plan(
-                topology.observations(rememberedSubnets),
+                topology.observations(allRememberedSubnets),
                 CandidateSubnetPlanner.Depth.WIDE,
-            ).filterNot { it in nearby }
+            ).filterNot { candidate -> nearby.any { it.subnet == candidate.subnet } }
 
             publish(Phase.SEARCHING_WIDER, 0, wider.size)
-            wider.forEachIndexed { index, subnet ->
-                // One probe decides whether this network is worth 254 more.
-                if (scanner.subnetExists(subnet)) {
-                    foreignRouters += formatIpv4(subnet.networkAddress + 1)
+            wider.forEachIndexed { index, candidate ->
+                if (shouldSweep(candidate)) {
+                    foreignRouters += formatIpv4(candidate.subnet.networkAddress + 1)
                     if (escalate) {
-                        scanner.sweep(listOf(subnet)).collectLatest { record(it) }
+                        scanner.sweep(listOf(candidate.subnet)).collectLatest { record(it) }
                     }
                 }
                 publish(Phase.SEARCHING_WIDER, index + 1, wider.size)
             }
         }
 
+        publish(Phase.FINISHED, diagnosis = diagnose(found.size, foreignRouters))
+    }
+
+    /**
+     * Explains an empty result.
+     *
+     * Only routers on networks this device is genuinely not part of count as
+     * evidence of a second network — one on our own subnet explains nothing.
+     */
+    private fun diagnose(printersFound: Int, foreignRouters: List<String>): DiscoveryDiagnosis {
         val localSubnets = topology.localAddresses().map { it.sweepableSubnet() }
-        val diagnosis = DiscoveryDiagnostics.diagnose(
+        return DiscoveryDiagnostics.diagnose(
             DiscoveryDiagnostics.Evidence(
                 hasNetwork = localSubnets.isNotEmpty(),
                 localSubnets = localSubnets,
-                // Only routers on networks we are genuinely not part of count.
                 foreignRoutersReachable = foreignRouters.filterNot { router ->
                     localSubnets.any { parseIpv4(router) in it }
                 },
-                printersFound = found.size,
+                printersFound = printersFound,
             ),
         )
-        publish(Phase.FINISHED, diagnosis = diagnosis)
     }
+
+    /**
+     * A network we have reason to believe in is swept outright.
+     *
+     * Requiring it to answer a router probe first is a sound optimisation for a
+     * guess and a bad gate on a good candidate: a router that replies to ICMP
+     * but not HTTP, or does not reply across a subnet boundary at all, would
+     * veto the sweep of the very network the printer was last seen on.
+     */
+    private suspend fun shouldSweep(candidate: CandidateSubnetPlanner.Candidate): Boolean =
+        candidate.confidence == CandidateSubnetPlanner.Confidence.HIGH ||
+            scanner.subnetExists(candidate.subnet)
 
     private companion object {
         const val SWEEP_PREFIX = 24

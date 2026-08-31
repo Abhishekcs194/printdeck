@@ -136,6 +136,16 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- The search skipped networks it had good reason to believe in. Every candidate
+  had to answer a router probe on ports 80/443/53 before being swept, so a router
+  that replies to ICMP but not HTTP — or does not reply across a subnet boundary
+  at all — vetoed the sweep of the very network the printer was last found on.
+  Networks that are attached, remembered, or beside a visible router are now
+  swept outright; only guesses from the list of common ranges are gated.
+- A remembered printer's network is derived from its address rather than tracked
+  separately, so the two can no longer disagree.
+- The probe looks two subnets either side of a router rather than one, and counts
+  printer ports as signs of life, not just router ports.
 - A landscape two-up job printed shrunk into the top half of an upright sheet.
   The earlier attempt at this used jipp-pdl's `RenderablePage.rotated()`, which
   is a *half* turn for the reverse of a duplex sheet and leaves page dimensions

@@ -14,7 +14,8 @@ import org.junit.Test
  */
 class CandidateSubnetPlannerTest {
 
-    private fun cidrs(subnets: List<Ipv4Subnet>) = subnets.map { it.asCidr() }
+    private fun cidrs(candidates: List<CandidateSubnetPlanner.Candidate>) =
+        candidates.map { it.subnet.asCidr() }
 
     @Test
     fun `local depth stays on networks the device is actually attached to`() {
@@ -83,7 +84,7 @@ class CandidateSubnetPlannerTest {
             ),
             Depth.WIDE,
         )
-        assertThat(plan.all(PrivateAddressGuard::isScannable)).isTrue()
+        assertThat(plan.all { PrivateAddressGuard.isScannable(it.subnet) }).isTrue()
         assertThat(cidrs(plan)).doesNotContain("8.8.8.0/24")
     }
 
@@ -95,7 +96,7 @@ class CandidateSubnetPlannerTest {
             Depth.LOCAL,
         )
         assertThat(cidrs(plan)).containsExactly("192.168.77.0/24")
-        assertThat(plan.single().hostCount).isEqualTo(254)
+        assertThat(plan.single().subnet.hostCount).isEqualTo(254)
     }
 
     @Test
@@ -106,6 +107,33 @@ class CandidateSubnetPlannerTest {
             maxSubnets = 6,
         )
         assertThat(plan).hasSize(6)
+    }
+
+    @Test
+    fun `a remembered subnet is swept outright, not gated on a router answering`() {
+        // The gate exists to save 254 connections on a guess. Applying it to the
+        // network the printer was last found on is how a search misses the one
+        // place it was most likely to succeed.
+        val plan = CandidateSubnetPlanner.plan(
+            Observations(rememberedSubnets = listOf(Ipv4Subnet.parse("192.168.101.0/24"))),
+            Depth.WIDE,
+        )
+        val remembered = plan.first { it.subnet.asCidr() == "192.168.101.0/24" }
+        assertThat(remembered.confidence).isEqualTo(CandidateSubnetPlanner.Confidence.HIGH)
+    }
+
+    @Test
+    fun `a network beside a visible router is trusted, a generic guess is not`() {
+        val plan = CandidateSubnetPlanner.plan(
+            Observations(gateways = listOf("192.168.100.1")),
+            Depth.WIDE,
+        )
+        // The band either side of a real router is where a second network lives.
+        assertThat(plan.first { it.subnet.asCidr() == "192.168.101.0/24" }.confidence)
+            .isEqualTo(CandidateSubnetPlanner.Confidence.HIGH)
+        // A range off the standard list has nothing behind it but hope.
+        assertThat(plan.first { it.subnet.asCidr() == "10.42.0.0/24" }.confidence)
+            .isEqualTo(CandidateSubnetPlanner.Confidence.SPECULATIVE)
     }
 
     @Test

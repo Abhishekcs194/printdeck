@@ -46,6 +46,26 @@ object CandidateSubnetPlanner {
         val rememberedSubnets: List<Ipv4Subnet> = emptyList(),
     )
 
+    /**
+     * How much reason there is to believe a network exists.
+     *
+     * The distinction decides whether a network is swept outright or has to
+     * prove itself first. Probing a router before spending 254 connections on
+     * its subnet is a sound optimisation for guesses, and a bad gate on good
+     * candidates: a router that answers ICMP but not HTTP, or answers nothing
+     * from a neighbouring subnet, would veto the sweep of the very network the
+     * printer was last found on.
+     */
+    enum class Confidence {
+        /** Attached, remembered, or derived from a router this device can see. */
+        HIGH,
+
+        /** A guess from the list of ranges consumer gear ships with. */
+        SPECULATIVE,
+    }
+
+    data class Candidate(val subnet: Ipv4Subnet, val confidence: Confidence)
+
     enum class Depth {
         /**
          * Only what is certainly nearby: remembered subnets and directly attached
@@ -89,7 +109,7 @@ object CandidateSubnetPlanner {
 
         // The adjacent third octets, plus the two bases nearly every consumer
         // router defaults to.
-        return listOf(thirdOctet - 1, thirdOctet + 1, 0L, 1L)
+        return listOf(thirdOctet - 1, thirdOctet + 1, thirdOctet - 2, thirdOctet + 2, 0L, 1L)
             .filter { it in 0..MAX_OCTET }
             .distinct()
             .map { octet -> Ipv4Subnet(classBBase or (octet shl OCTET_BITS), MIN_SWEEPABLE_PREFIX) }
@@ -104,13 +124,13 @@ object CandidateSubnetPlanner {
         observations: Observations,
         depth: Depth,
         maxSubnets: Int = if (depth == Depth.LOCAL) MAX_LOCAL_SUBNETS else MAX_WIDE_SUBNETS,
-    ): List<Ipv4Subnet> {
+    ): List<Candidate> {
         val ordered = buildList {
             // 1. Where it was last time. Almost always still true, and nearly free.
-            addAll(observations.rememberedSubnets)
+            observations.rememberedSubnets.forEach { add(it to Confidence.HIGH) }
 
             // 2. Networks this device is actually on.
-            addAll(observations.localAddresses.map { it.sweepableSubnet() })
+            observations.localAddresses.forEach { add(it.sweepableSubnet() to Confidence.HIGH) }
 
             if (depth == Depth.WIDE) {
                 // 3. The subnet each visible router lives on. An upstream hop at
@@ -118,23 +138,28 @@ object CandidateSubnetPlanner {
                 //    announcement-based discovery can never reach.
                 observations.gateways.forEach { gateway ->
                     runCatching { Ipv4Subnet.containing(parseIpv4(gateway), MIN_SWEEPABLE_PREFIX) }
-                        .getOrNull()?.let(::add)
+                        .getOrNull()?.let { add(it to Confidence.HIGH) }
                 }
-                // 4. Ranges adjacent to those routers.
-                observations.gateways.forEach { addAll(neighboursOf(it)) }
-                // 5. The standard consumer ranges.
-                addAll(commonHomeSubnets)
+                // 4. Ranges adjacent to those routers. Still high confidence: a
+                //    router at .101.1 is very often itself a client of .100.x,
+                //    and that neighbour is where a second network usually lives.
+                observations.gateways.forEach { gateway ->
+                    neighboursOf(gateway).forEach { add(it to Confidence.HIGH) }
+                }
+                // 5. The standard consumer ranges. Guesses, and gated as such.
+                commonHomeSubnets.forEach { add(it to Confidence.SPECULATIVE) }
             }
         }
 
         return ordered
             .asSequence()
             // Never sweep anything that is not unambiguously private.
-            .filter(PrivateAddressGuard::isScannable)
+            .filter { (subnet, _) -> PrivateAddressGuard.isScannable(subnet) }
             // A /16 would be 65 534 probes; only /24-or-smaller is sweepable.
-            .filter { it.prefixLength >= MIN_SWEEPABLE_PREFIX }
-            .distinct()
+            .filter { (subnet, _) -> subnet.prefixLength >= MIN_SWEEPABLE_PREFIX }
+            .distinctBy { (subnet, _) -> subnet }
             .take(maxSubnets)
+            .map { (subnet, confidence) -> Candidate(subnet, confidence) }
             .toList()
     }
 
@@ -152,7 +177,7 @@ object CandidateSubnetPlanner {
      * practice because networks that do not answer at their router address are
      * skipped without being swept.
      */
-    private const val MAX_WIDE_SUBNETS = 14
+    private const val MAX_WIDE_SUBNETS = 20
 
     // IPv4 octet arithmetic.
     private const val OCTET_BITS = 8

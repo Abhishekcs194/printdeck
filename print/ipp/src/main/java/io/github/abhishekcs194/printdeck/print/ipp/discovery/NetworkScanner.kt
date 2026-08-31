@@ -144,9 +144,16 @@ class NetworkScanner(
          * Where domestic routers actually live within their own range: almost
          * always the first address, occasionally the last usable one.
          */
-        val ROUTER_HOST_OFFSETS = listOf(1L, 254L, 253L)
+        val ROUTER_HOST_OFFSETS = listOf(1L, 254L, 253L, 2L)
 
-        /** Ports a domestic router almost always answers on. */
-        val GATEWAY_PROBE_PORTS = listOf(80, 443, 53)
+        /**
+         * Ports that suggest something is alive on a network.
+         *
+         * Not only router ports: a segment may have a quiet router and a chatty
+         * printer, and finding the printer is the point. Including the printer
+         * ports means a network is not dismissed merely because its gateway
+         * declines to answer a web request from across a subnet boundary.
+         */
+        val GATEWAY_PROBE_PORTS = listOf(80, 443, 53, 631, 9100, 8080)
     }
 }
