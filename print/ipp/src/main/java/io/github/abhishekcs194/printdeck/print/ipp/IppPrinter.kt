@@ -137,8 +137,21 @@ class IppPrinter(
                 sides = options.sides,
                 copies = options.copies,
             )
+
+            // Paper feeds one way round, and the media keyword names a portrait
+            // sheet. A landscape imposition has to be turned to match it - the
+            // rotation a desktop print driver performs and the user never sees.
+            // Without it the printer shrinks the whole sheet to fit its short
+            // edge, leaving a white band top and bottom and wasting most of the
+            // page the imposition was arranged to fill.
+            val oriented = if (options.sheetIsLandscape) {
+                document.mapPages { pages -> pages.map { it.rotated() } }
+            } else {
+                document
+            }
+
             target.outputStream().buffered().use { stream ->
-                PwgWriter(stream, PwgSettings(output)).write(document)
+                PwgWriter(stream, PwgSettings(output)).write(oriented)
             }
         }
         return target

@@ -60,6 +60,10 @@ class PrintSetupViewModel @Inject constructor(
                         else -> IppPrintOptions.COLOR_MODE_MONOCHROME
                     },
                     media = spec?.paper?.ippKeyword,
+                    // The imposition already decided the sheet orientation; the
+                    // rasteriser needs it so a landscape sheet is turned to match
+                    // the way paper feeds.
+                    sheetIsLandscape = spec?.landscape == true,
                 ),
             )
         }

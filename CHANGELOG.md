@@ -136,6 +136,9 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- A landscape imposition printed shrunk into the middle of a portrait sheet, with
+  white bands top and bottom. The raster is now rotated to match the way paper
+  feeds, which is the correction a desktop print driver makes silently.
 - A remembered printer was reported as found without ever being contacted. The
   check probed its subnet's gateway rather than the printer, and a router answers
   on its own subnet from neighbouring networks — so a phone that had changed

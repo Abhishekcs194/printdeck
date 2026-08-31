@@ -28,6 +28,14 @@ data class IppPrintOptions(
      * and one that runs out of memory. 300 is indistinguishable for text.
      */
     val rasterDpi: Int = DEFAULT_RASTER_DPI,
+    /**
+     * Whether the imposed sheet is wider than it is tall.
+     *
+     * Paper feeds one way round. A landscape sheet has to be rotated onto
+     * portrait media, or the printer scales it down to fit and leaves a white
+     * band along two edges instead of filling the page.
+     */
+    val sheetIsLandscape: Boolean = false,
 ) {
     val isMonochrome: Boolean
         get() = colorMode == COLOR_MODE_MONOCHROME || colorMode == COLOR_MODE_AUTO_MONOCHROME
