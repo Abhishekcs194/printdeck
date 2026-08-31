@@ -9,7 +9,16 @@ data class ImpositionSettings(
     val sheet: PaperSize = PaperSize.Default,
     /** Forces sheet orientation. Null lets the mode choose whichever wastes less paper. */
     val sheetLandscape: Boolean? = null,
-    val margins: Margins = Margins.None,
+    /**
+     * Defaults to a small margin rather than none.
+     *
+     * Every inkjet has a border a few millimetres wide that it physically cannot
+     * put ink on. Imposing to the very edge of the sheet puts content there, and
+     * the printer responds either by clipping it or by shrinking the whole page
+     * to compensate - which silently undoes a layout computed to the millimetre.
+     * Someone who genuinely wants edge-to-edge can still set this to zero.
+     */
+    val margins: Margins = Margins.uniformMm(DEFAULT_MARGIN_MM),
     /** Extra margin on the binding edge, added on top of [margins]. */
     val bindingGutterPt: Double = 0.0,
     val bindingEdge: BindingEdge = BindingEdge.LEFT,
@@ -21,6 +30,9 @@ data class ImpositionSettings(
     val pageSelection: PageSelection = PageSelection.All,
     val reverseOrder: Boolean = false,
 )
+
+/** Clear of the unprintable border on essentially every consumer printer. */
+private const val DEFAULT_MARGIN_MM = 5.0
 
 sealed interface ImpositionMode {
 

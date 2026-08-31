@@ -199,6 +199,16 @@ class IppPrinter(
             add(Types.sides.of(options.sides))
             add(Types.printColorMode.of(options.colorMode))
             options.media?.let { add(Types.media.of(it)) }
+
+            // Tell the printer not to resize anything.
+            //
+            // Printers default this to "auto", which leaves them free to rescale
+            // a job to suit themselves. That is reasonable for an arbitrary
+            // document and wrong for this one: the page positions have already
+            // been computed to the millimetre, and a printer that shrinks the
+            // sheet silently undoes the layout and makes the on-screen preview a
+            // lie about what comes out.
+            add(Types.printScaling.of(PRINT_SCALING_NONE))
         }
 
         return IppPacket(
@@ -264,6 +274,7 @@ class IppPrinter(
         const val CHARSET = "utf-8"
         const val LANGUAGE = "en"
         const val PWG_RASTER_FORMAT = "image/pwg-raster"
+        const val PRINT_SCALING_NONE = "none"
 
         /** IPP requires a user name; the printer only uses it for the job list. */
         const val REQUESTING_USER = "PrintDeck"

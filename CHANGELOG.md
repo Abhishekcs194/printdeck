@@ -136,6 +136,11 @@ versioning is [semver](https://semver.org/).
   printers that do not speak IPP and offers Save as PDF.
 
 ### Fixed
+- Jobs now tell the printer not to rescale them (`print-scaling: none`). Printers
+  default to `auto` and are otherwise free to resize a sheet whose page positions
+  were computed to the millimetre.
+- Margins default to 5mm rather than none, keeping content out of the border a
+  printer physically cannot image. Zero is still available for edge-to-edge.
 - A landscape imposition printed shrunk into the middle of a portrait sheet, with
   white bands top and bottom. The raster is now rotated to match the way paper
   feeds, which is the correction a desktop print driver makes silently.
