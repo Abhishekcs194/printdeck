@@ -441,6 +441,14 @@ private fun PaperControls(
         }
 
         OptionRow(
+            label = "Print last page first",
+            description = "Most printers stack face up, so this leaves the pile in reading " +
+                "order instead of back to front.",
+        ) {
+            PrintDeckSwitch(state.reverseOutputOrder, viewModel::setReverseOutputOrder)
+        }
+
+        OptionRow(
             label = "Binding margin",
             description = "Extra space on the bound edge, so text does not vanish into the fold.",
         ) {

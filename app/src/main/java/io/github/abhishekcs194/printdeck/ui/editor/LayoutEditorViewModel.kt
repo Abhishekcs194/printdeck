@@ -16,6 +16,7 @@ import io.github.abhishekcs194.printdeck.pdf.engine.ImpositionEngine
 import io.github.abhishekcs194.printdeck.pdf.engine.PdfPreviewRenderer
 import io.github.abhishekcs194.printdeck.pdf.imposition.ImpositionPlan
 import io.github.abhishekcs194.printdeck.pdf.imposition.Imposer
+import io.github.abhishekcs194.printdeck.pdf.imposition.reversedForFaceUpStacking
 import io.github.abhishekcs194.printdeck.print.system.PrintJobSpec
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -39,6 +40,14 @@ class LayoutEditorViewModel @Inject constructor(
         val document: LoadedDocument? = null,
         val settings: ImpositionSettings = ImpositionSettings(),
         val colorMode: ColorMode = ColorMode.MONOCHROME,
+        /**
+         * Send the last sheet first, so a face-up stack ends up in reading order.
+         *
+         * Kept out of [ImpositionSettings] deliberately: it changes nothing about
+         * the layout, and the preview should still show sheet one first. It is
+         * how the finished job is ordered, not how a page is arranged.
+         */
+        val reverseOutputOrder: Boolean = true,
         val plan: ImpositionPlan? = null,
         val previewIndex: Int = 0,
         /**
@@ -96,6 +105,9 @@ class LayoutEditorViewModel @Inject constructor(
      */
     fun setColorMode(mode: ColorMode) = _state.update { it.copy(colorMode = mode) }
 
+    fun setReverseOutputOrder(reverse: Boolean) =
+        _state.update { it.copy(reverseOutputOrder = reverse) }
+
     fun showSheet(index: Int) {
         val count = _state.value.sheetCount
         if (count == 0) return
@@ -123,7 +135,14 @@ class LayoutEditorViewModel @Inject constructor(
             _state.update { it.copy(preparingPrint = true, error = null) }
             runCatching {
                 val target = File(context.cacheDir, "print-job.pdf")
-                engine.impose(document.file, plan, target)
+                // Reversed only for the job itself; the preview keeps showing
+                // sheet one first, because that is the sheet people expect to see.
+                val ordered = if (snapshot.reverseOutputOrder) {
+                    plan.reversedForFaceUpStacking()
+                } else {
+                    plan
+                }
+                engine.impose(document.file, ordered, target)
             }
                 .onSuccess { file ->
                     _state.update {

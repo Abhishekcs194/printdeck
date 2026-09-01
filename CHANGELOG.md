@@ -141,6 +141,10 @@ versioning is [semver](https://semver.org/).
   DHCP handed over as evidence of real segments. Guessed ranges remain, last, as
   a fallback.
 
+- Sheets are sent last-first by default, so a face-up printer leaves the finished
+  stack in reading order rather than back to front. Duplex sheets keep their front
+  and back together. The preview still shows sheet one first.
+
 ### Fixed
 - The search skipped networks it had good reason to believe in. Every candidate
   had to answer a router probe on ports 80/443/53 before being swept, so a router
