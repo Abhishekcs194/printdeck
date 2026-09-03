@@ -145,6 +145,10 @@ versioning is [semver](https://semver.org/).
   stack in reading order rather than back to front. Duplex sheets keep their front
   and back together. The preview still shows sheet one first.
 
+- When a search finds nothing, the app now checks whether it can reach the router
+  it is connected to. If it cannot, it says so — that is a permission or VPN
+  problem, not a missing printer, and the two need opposite responses.
+
 ### Fixed
 - The search skipped networks it had good reason to believe in. Every candidate
   had to answer a router probe on ports 80/443/53 before being swept, so a router

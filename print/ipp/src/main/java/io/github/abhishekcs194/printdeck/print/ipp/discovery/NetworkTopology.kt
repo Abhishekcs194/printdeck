@@ -48,7 +48,7 @@ class NetworkTopology(private val context: Context) : Topology {
      * gateway — while the address that betrays a *second* network is usually
      * sitting at the `.1` of a range nobody advertised.
      */
-    fun gateways(): List<String> {
+    override fun gateways(): List<String> {
         val fromRoutes = runCatching {
             val connectivity = context.getSystemService<ConnectivityManager>()
             val network = connectivity?.activeNetwork

@@ -190,7 +190,29 @@ class PrinterDiscovery(
             }
         }
 
-        publish(Phase.FINISHED, diagnosis = diagnose(found.size, foreignRouters))
+        val (ownGateway, gatewayReachable) = checkOwnGateway(anythingFound = found.isNotEmpty())
+        publish(
+            Phase.FINISHED,
+            diagnosis = diagnose(found.size, foreignRouters, ownGateway, gatewayReachable),
+        )
+    }
+
+    /**
+     * Can this device reach the router it is connected to?
+     *
+     * Only asked when nothing turned up, and then only once: it costs a single
+     * connection, and it separates "there is no printer here" from "this app
+     * cannot reach the network at all". Those need opposite responses from the
+     * user, so guessing between them is worse than checking.
+     */
+    private suspend fun checkOwnGateway(anythingFound: Boolean): Pair<String?, Boolean?> {
+        val gateway = topology.gateways().firstOrNull()
+        if (anythingFound || gateway == null) return gateway to null
+
+        val reachable = runCatching {
+            scanner.subnetExists(Ipv4Subnet.containing(parseIpv4(gateway), SWEEP_PREFIX))
+        }.getOrDefault(false)
+        return gateway to reachable
     }
 
     /**
@@ -199,7 +221,12 @@ class PrinterDiscovery(
      * Only routers on networks this device is genuinely not part of count as
      * evidence of a second network — one on our own subnet explains nothing.
      */
-    private fun diagnose(printersFound: Int, foreignRouters: List<String>): DiscoveryDiagnosis {
+    private fun diagnose(
+        printersFound: Int,
+        foreignRouters: List<String>,
+        ownGateway: String?,
+        gatewayReachable: Boolean?,
+    ): DiscoveryDiagnosis {
         val localSubnets = topology.localAddresses().map { it.sweepableSubnet() }
         return DiscoveryDiagnostics.diagnose(
             DiscoveryDiagnostics.Evidence(
@@ -209,6 +236,8 @@ class PrinterDiscovery(
                     localSubnets.any { parseIpv4(router) in it }
                 },
                 printersFound = printersFound,
+                ownGateway = ownGateway,
+                ownGatewayReachable = gatewayReachable,
             ),
         )
     }

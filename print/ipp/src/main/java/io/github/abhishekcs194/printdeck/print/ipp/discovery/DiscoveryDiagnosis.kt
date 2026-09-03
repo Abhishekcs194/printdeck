@@ -45,6 +45,36 @@ sealed interface DiscoveryDiagnosis {
     }
 
     /**
+     * The app cannot reach even the router it is connected to.
+     *
+     * A device that has an address on a network can always reach that network's
+     * router; if it cannot, nothing is stopping at the printer — something is
+     * standing between this app and the local network entirely. On recent
+     * Android that is usually a per-app local-network restriction, a VPN
+     * capturing traffic, or a manufacturer's own privacy toggle.
+     *
+     * Distinguishing this from "no printer here" matters: one is a permission to
+     * grant, the other is a printer to go and switch on, and telling someone to
+     * check the wrong one wastes their afternoon.
+     */
+    data class LocalNetworkBlocked(val gateway: String) : DiscoveryDiagnosis {
+        override val headline = "PrintDeck cannot reach your network"
+
+        override val explanation =
+            "This device is connected, but PrintDeck could not reach your router at " +
+                "$gateway. Something is blocking it from the local network, so no printer " +
+                "on it can be found."
+
+        override val suggestions = listOf(
+            "Check PrintDeck's permissions in Android settings — look for local network, " +
+                "nearby devices, or Wi-Fi access",
+            "Some phones add their own privacy switch for local network access; check the " +
+                "manufacturer's settings too",
+            "If a VPN is running, it may be capturing this traffic — try turning it off",
+        )
+    }
+
+    /**
      * The strong case. Another router answered on a network this device is not
      * part of, which means there is a whole segment next door.
      *
@@ -134,12 +164,25 @@ object DiscoveryDiagnostics {
         val localSubnets: List<Ipv4Subnet>,
         val foreignRoutersReachable: List<String> = emptyList(),
         val printersFound: Int = 0,
+        /**
+         * Whether this device's own router answered. Null when it was not
+         * checked. A device with an address on a network can always reach that
+         * network's router, so a failure here is about access, not about
+         * printers.
+         */
+        val ownGateway: String? = null,
+        val ownGatewayReachable: Boolean? = null,
     )
 
     fun diagnose(evidence: Evidence): DiscoveryDiagnosis = when {
         evidence.printersFound > 0 -> DiscoveryDiagnosis.Found(evidence.printersFound)
 
         !evidence.hasNetwork || evidence.localSubnets.isEmpty() -> DiscoveryDiagnosis.NotConnected
+
+        // Checked before anything about printers: if the local network itself is
+        // out of reach, everything downstream of it is explained by that.
+        evidence.ownGatewayReachable == false && evidence.ownGateway != null ->
+            DiscoveryDiagnosis.LocalNetworkBlocked(evidence.ownGateway)
 
         evidence.foreignRoutersReachable.isNotEmpty() -> DiscoveryDiagnosis.PrinterOnAnotherNetwork(
             yourNetwork = evidence.localSubnets.first().asCidr(),

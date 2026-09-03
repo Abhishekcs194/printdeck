@@ -44,6 +44,65 @@ class DiscoveryDiagnosticsTest {
     }
 
     @Test
+    fun `being unable to reach your own router is reported as an access problem`() {
+        // Reported from a device: one phone found the printer, another on the
+        // same network never did. If the app cannot reach the router it is
+        // connected to, nothing is stopping at the printer - something is
+        // between the app and the local network.
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(
+                hasNetwork = true,
+                localSubnets = listOf(home),
+                ownGateway = "192.168.1.1",
+                ownGatewayReachable = false,
+            ),
+        )
+
+        assertThat(diagnosis).isInstanceOf(DiscoveryDiagnosis.LocalNetworkBlocked::class.java)
+        assertThat(diagnosis.explanation).contains("192.168.1.1")
+        // The distinction that matters: a permission to grant, not a printer to
+        // go and switch on.
+        assertThat(diagnosis.suggestions.joinToString()).contains("permission")
+        assertThat(diagnosis.suggestions.joinToString()).contains("VPN")
+    }
+
+    @Test
+    fun `a reachable router is not reported as blocked`() {
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(
+                hasNetwork = true,
+                localSubnets = listOf(home),
+                ownGateway = "192.168.1.1",
+                ownGatewayReachable = true,
+            ),
+        )
+        assertThat(diagnosis).isInstanceOf(DiscoveryDiagnosis.NotFoundOnThisNetwork::class.java)
+    }
+
+    @Test
+    fun `an unchecked router leaves the ordinary explanation in place`() {
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(hasNetwork = true, localSubnets = listOf(home)),
+        )
+        assertThat(diagnosis).isInstanceOf(DiscoveryDiagnosis.NotFoundOnThisNetwork::class.java)
+    }
+
+    @Test
+    fun `finding a printer outranks an unreachable router`() {
+        // If a printer was found, the network plainly works.
+        val diagnosis = DiscoveryDiagnostics.diagnose(
+            DiscoveryDiagnostics.Evidence(
+                hasNetwork = true,
+                localSubnets = listOf(home),
+                ownGateway = "192.168.1.1",
+                ownGatewayReachable = false,
+                printersFound = 1,
+            ),
+        )
+        assertThat(diagnosis).isInstanceOf(DiscoveryDiagnosis.Found::class.java)
+    }
+
+    @Test
     fun `a router on another network is named, with the fix`() {
         // The real household case: a second access point sharing one Wi-Fi name,
         // with its own range behind it.

@@ -55,14 +55,16 @@ class PrinterDiscoveryTest {
         override fun localAddresses() =
             listOf(CandidateSubnetPlanner.LocalAddress(address, PREFIX))
 
+        override fun gateways() = listOf(
+            formatIpv4(Ipv4Subnet.containing(parseIpv4(address), PREFIX).networkAddress + 1),
+        )
+
         override fun observations(rememberedSubnets: List<Ipv4Subnet>) =
             CandidateSubnetPlanner.Observations(
                 localAddresses = localAddresses(),
                 // Every device on a network has a default route; a fake that
                 // pretends otherwise tests a situation that does not occur.
-                gateways = listOf(formatIpv4(
-                    Ipv4Subnet.containing(parseIpv4(address), PREFIX).networkAddress + 1,
-                )),
+                gateways = gateways(),
                 rememberedSubnets = rememberedSubnets,
             )
     }

@@ -11,6 +11,9 @@ interface Announcements {
 interface Topology {
     fun localAddresses(): List<CandidateSubnetPlanner.LocalAddress>
 
+    /** Routers this device knows about, nearest first. */
+    fun gateways(): List<String>
+
     fun observations(
         rememberedSubnets: List<Ipv4Subnet> = emptyList(),
     ): CandidateSubnetPlanner.Observations
